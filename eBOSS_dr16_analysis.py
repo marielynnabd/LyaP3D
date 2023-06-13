@@ -154,7 +154,7 @@ def get_los_table_dr16(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all', 
     if ncpu=='all':
         ncpu = multiprocessing.cpu_count()
 
-    print("Nb of delta files:", len(files))
+    print("Nb of delta files:", len(deltafiles))
     print("Number of cpus:", multiprocessing.cpu_count())
 
     with Pool(ncpu) as pool:
