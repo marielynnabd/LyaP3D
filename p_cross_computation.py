@@ -103,7 +103,7 @@ def get_possible_pairs(i_los, all_los_table, los_number, ang_sep_max, radec_name
     return los_pairs_table
 
 
-def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, units='Angstrom'):
+def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for pairs with angular separations > 0 (called cross power spectrum):
           - Takes mock and corresponfing los_pairs_table
           _ Computes cross power spectrum for each pair
@@ -120,9 +120,16 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, unit
     ang_sep_bin_edges: Array of floats
     Edges of the angular separation bins we want to use
     
-    # units: String, Options: 'Mpc/h', 'Angstrom', 'km/s', Default is Angstrom
-    # Units in which to compute power spectrum
-    Output units will be the same units as all_los_table['wavelength'] units for the moment.
+    data_type: String, Options: 'mocks', 'real'
+    The type of data set on which we want to run the cross power spectrum computation.
+        - In the case of mocks: The cross power spectrum will be computed in [Angstrom] by default,
+        because when we draw LOS to create mocks, wavelength = (1 + refshift) * lambda_lya [Angstrom].
+        If another unit is desired, this must be specified in the argument units.
+        - In the case of real data: The cross power spectrum will be first computed unitless,
+        because wavelength = LOGLAM, therefore it is mandatory to multiply it my a factor c, and the output will be in [km/s].
+    
+    units: String, Options: 'Mpc/h', 'Angstrom', 'km/s', Default is Angstrom
+    Units in which to compute power spectrum. This argument must be specified if data_type is 'mocks'.
     
     Return:
     -------
@@ -189,17 +196,22 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, unit
 
         p_cross /= pixelization_factor
         
-        if units == 'km/s':            
-            conversion_factor = (1 + z) * lambda_lya / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
-            p_cross /= conversion_factor # km/s
-            k_parallel *= conversion_factor # k_parallel in [km/s]^-1
-            
-        elif units == 'Mpc/h':
-            conversion_factor = (hubble(z) * lambda_lya) / SPEED_LIGHT 
-            p_cross /= conversion_factor # Mpc
-            k_parallel *= conversion_factor # Mpc^-1
-            p_cross *= h # [Mpc/h]
-            k_parallel /= h # [Mpc/h]^-1
+        if data_type == 'mocks':
+            # If the output unit desired is not Angstrom
+            if units == 'km/s':            
+                conversion_factor = (1 + z) * lambda_lya / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
+                p_cross /= conversion_factor # km/s
+                k_parallel *= conversion_factor # k_parallel in [km/s]^-1
+
+            elif units == 'Mpc/h':
+                conversion_factor = (hubble(z) * lambda_lya) / SPEED_LIGHT 
+                p_cross /= conversion_factor # Mpc
+                k_parallel *= conversion_factor # Mpc^-1
+                p_cross *= h # [Mpc/h]
+                k_parallel /= h # [Mpc/h]^-1
+        else:
+            p_cross *= SPEED_LIGHT
+            k_parallel /= SPEED_LIGHT
 
         # mean_p_cross computation
         mean_p_cross = np.zeros(Nk)
@@ -215,7 +227,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, unit
     return p_cross_table
 
 
-def compute_mean_p_auto(all_los_table, units='Angstrom'):
+def compute_mean_p_auto(all_los_table, data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for angular separation = 0 (Lya forest and itself, called auto power spectrum):
           - Takes all_los_table
           - Computes auto power spectrum for each LOS 
@@ -226,9 +238,16 @@ def compute_mean_p_auto(all_los_table, units='Angstrom'):
     all_los_table: Table
     Mock
     
-    # units: String, Options: 'Mpc/h', 'Angstrom', 'km/s', Default is Angstrom
-    # Units in which to compute power spectrum
-    Output units will be the same units as all_los_table['wavelength'] units for the moment.
+    data_type: String, Options: 'mocks', 'real'
+    The type of data set on which we want to run the auto power spectrum computation.
+        - In the case of mocks: The auto power spectrum will be computed in [Angstrom] by default,
+        because when we draw LOS to create mocks, wavelength = (1 + refshift) * lambda_lya [Angstrom].
+        If another unit is desired, this must be specified in the argument units.
+        - In the case of real data: The auto power spectrum will be first computed unitless,
+        because wavelength = LOGLAM, therefore it is mandatory to multiply it my a factor c, and the output will be in [km/s].
+    
+    units: String, Options: 'Mpc/h', 'Angstrom', 'km/s', Default is Angstrom
+    Units in which to compute power spectrum. This argument must be specified if data_type is 'mocks'.
     
     Return:
     -------
@@ -274,17 +293,22 @@ def compute_mean_p_auto(all_los_table, units='Angstrom'):
 
     p_auto /= pixelization_factor
 
-    if units == 'km/s':
-            conversion_factor = (1 + z) * lambda_lya / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
-            p_auto /= conversion_factor # km/s
-            k_parallel *= conversion_factor # k_parallel in [km/s]^-1
-            
-    elif units == 'Mpc/h':
-            conversion_factor = (hubble(z) * lambda_lya) / SPEED_LIGHT # from Angstrom^-1 to Mpc^-1
-            p_auto /= conversion_factor # Mpc
-            k_parallel *= conversion_factor # Mpc^-1
-            p_auto *= h # [Mpc/h]
-            k_parallel /= h # [Mpc/h]^-1
+    if data_type == 'mocks':
+    
+        if units == 'km/s':
+                conversion_factor = (1 + z) * lambda_lya / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
+                p_auto /= conversion_factor # km/s
+                k_parallel *= conversion_factor # k_parallel in [km/s]^-1
+
+        elif units == 'Mpc/h':
+                conversion_factor = (hubble(z) * lambda_lya) / SPEED_LIGHT # from Angstrom^-1 to Mpc^-1
+                p_auto /= conversion_factor # Mpc
+                k_parallel *= conversion_factor # Mpc^-1
+                p_auto *= h # [Mpc/h]
+                k_parallel /= h # [Mpc/h]^-1
+    else:
+        p_auto *= SPEED_LIGHT
+        k_parallel /= SPEED_LIGHT
        
     # mean_p_auto computation
     mean_p_auto = np.zeros(Nk)
@@ -302,7 +326,7 @@ def compute_mean_p_auto(all_los_table, units='Angstrom'):
     return p_auto_table
 
 
-def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, units='Angstrom'):
+def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type='mocks', units='Angstrom'):
     """ - This function computes mean_power_spectrum: 
             - Takes all_los_table and pairs (1 mock)
             - Computes mean_p_auto and mean_p_cross using above functions
@@ -312,20 +336,14 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
     ----------
     Arguments are as defined above
     
-    # units: String, Options: 'Mpc/h', 'Angstrom', 'km/s', Default is Angstrom
-    # Units in which to compute power spectrum
-    Output units will be the same units as all_los_table['wavelength'] units for the moment.
-    
     Return:
     -------
     mean_power_spectrum_table: Table
     Each row corresponds to the computed power spectrum in an angular spearation bin
     """
-    
-    # p_cross_table = compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges) #, units)
-    # p_auto_table = compute_mean_p_auto(all_los_table) #, units)
-    p_cross_table = compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, units)
-    p_auto_table = compute_mean_p_auto(all_los_table, units)
+
+    p_cross_table = compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type, units)
+    p_auto_table = compute_mean_p_auto(all_los_table, data_type, units)
     mock_mean_power_spectrum = vstack([p_auto_table, p_cross_table])
     
     return mock_mean_power_spectrum
@@ -373,7 +391,8 @@ def wavenumber_rebin(power_spectrum_table, n_kbins):
     return power_spectrum_table
 
 
-def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_binning=False, units='Angstrom', radec_names=['ra', 'dec']): 
+def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_binning=False, 
+                                    data_type='mocks', units='Angstrom', radec_names=['ra', 'dec']): 
     """ - This function computes all_mocks_mean_power_spectrum:
             - Takes all mocks or one mock
             - Gets pairs table for each mock separately
@@ -396,9 +415,16 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_bin
     k_binning: Boolean, Default to False
     Rebin power spectrum using wavenumber_rebin function
     
-    # units: String, Options: 'Mpc/h', 'Angstrom', 'km/s', Default is Angstrom
-    # Units in which to compute power spectrum
-    Output units will be the same units as all_los_table['wavelength'] units for the moment.
+    data_type: String, Options: 'mocks', 'real'
+    The type of data set on which we want to run the power spectrum computation.
+        - In the case of mocks: The power spectrum will be computed in [Angstrom] by default,
+        because when we draw LOS to create mocks, wavelength = (1 + refshift) * lambda_lya [Angstrom].
+        If another unit is desired, this must be specified in the argument units.
+        - In the case of real data: The power spectrum will be first computed unitless,
+        because wavelength = LOGLAM, therefore it is mandatory to multiply it my a factor c, and the output will be in [km/s].
+    
+    units: String, Options: 'Mpc/h', 'Angstrom', 'km/s', Default is Angstrom
+    Units in which to compute power spectrum. This argument must be specified if data_type is 'mocks'.
     
     radec_names: List of str, Default: ['ra', 'dec']
     ra dec keys in mocks or data table
@@ -463,8 +489,8 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_bin
         # Computing the mean_p_cross for each mock
         # print('Computing mean power spectrum in ', units)
         print('Computing mean power spectrum in input units')
-        # mock_mean_power_spectrum = compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges) #, units)
-        mock_mean_power_spectrum = compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, units)
+        mock_mean_power_spectrum = compute_mean_power_spectrum(all_los_table, los_pairs_table, 
+                                                               ang_sep_bin_edges, data_type, units)
         
         # Stacking power spectra of all mocks in one table
         all_mocks_mean_power_spectrum = vstack([all_mocks_mean_power_spectrum, mock_mean_power_spectrum])  
