@@ -4,6 +4,7 @@ import numpy as np
 import sys, os
 import glob
 from astropy.table import Table, vstack
+import multiprocessing
 from multiprocessing import Pool
 
 def get_pairs_single_los(i_los, all_los_table, ang_sep_max, radec_names=['ra', 'dec']):
@@ -79,13 +80,17 @@ def get_pairs_single_los(i_los, all_los_table, ang_sep_max, radec_names=['ra', '
     return single_los_pairs_table
 
 
-def compute_pairs(all_los_table, ang_sep_max, radec_names=['ra', 'dec'], outputfile=None):
+def compute_pairs(all_los_table, ang_sep_max, radec_names=['ra', 'dec'], ncpu='all', outputfile=None):
 
     # Getting los_pairs_table from mock 
     if radec_names == ['x', 'y']:
         print('Getting pairs with angular separation < '+str(ang_sep_max)+' Mpc/h')
     else:
         print('Getting pairs with angular separation < '+str(ang_sep_max)+' degrees')
+
+    if ncpu=='all':
+        ncpu = multiprocessing.cpu_count()
+    print("Number of cpus:", multiprocessing.cpu_count())
 
     with Pool(ncpu) as pool:
         output_get_pairs_single_los = pool.starmap(

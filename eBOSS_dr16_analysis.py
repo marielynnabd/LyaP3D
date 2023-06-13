@@ -112,7 +112,9 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, 
     mask_los_used = ~np.isnan(los_table['ra'])
     los_table = los_table[mask_los_used]
     print("DR16 delta file", delta_file_name,":",len(los_table),"LOS used")
-    print("                 (",n_masked,"LOS not used presumably due to masked pixels)")
+    if n_masked>0:
+        print("                 (",n_masked,"LOS not used presumably due to masked pixels)")
+
     return los_table
 
 
