@@ -1,13 +1,16 @@
 """ This module provides a set of functions to get P3D from Pcross computed on data """
 
 import numpy as np
-import os, sys
+import os, sys, glob
+import multiprocessing
+from multiprocessing import Pool
+
 from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
 
 
-def get_qso_deltas(delta_file_name, qso_cat, lambda_min, lambda_max, with_interpolation=False):
+def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, with_interpolation=False):
     """ This function returns a table of ra, dec, wavelength and delta for each of the QSOs in qso_cat.
     Wavelenghts are selected in [lambda_min, lambda_max]
 
@@ -15,16 +18,16 @@ def get_qso_deltas(delta_file_name, qso_cat, lambda_min, lambda_max, with_interp
     ----------
     delta_file_name: String
     delta fits file, DR16 format
-    
+
     qso_cat: Table
     QSO catalog for which we want to find the corresponding deltas, using THING_ID
-    
+
     lambda_min: Float
     Value of the minimum forest wavelength required
-    
+
     lambda_max: Float
     Value of the maximum forest wavelength required
-    
+
     with_interpolation: bool, default False
     If True, interpolate the deltas on the reference BOSS wavelength grid.
     In principle we dont have to use that.
@@ -112,4 +115,62 @@ def get_qso_deltas(delta_file_name, qso_cat, lambda_min, lambda_max, with_interp
     print("                 (",n_masked,"LOS not used presumably due to masked pixels)")
     return los_table
 
+
+
+def get_los_table_dr16(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all', outputfile=None):
+    """ This function returns a table of ra, dec, wavelength and delta for each of the QSOs in qso_cat.
+    Wavelenghts are selected in [lambda_min, lambda_max]
+    Wrapper around get_qso_deltas_singlefile
+
+    Arguments:
+    ----------
+    qso_cat: Table
+    QSO catalog for which we want to find the corresponding deltas, using THING_ID
+
+    deltas_dir: string
+    Directory where DR16 delta files should be
+
+    lambda_min: Float
+    Value of the minimum forest wavelength required
+
+    lambda_max: Float
+    Value of the maximum forest wavelength required
+
+    ncpu: int or 'all'
+    For multiprocessing.Pool
+
+    outputfile: string, default None
+    Write LOS table to file
+
+    Return:
+    -------
+    los_table: Table
+    Table where each row corresponds to a QSO, containing [ra, dec, wavelengths, deltas]
+    """
+
+    searchstr = '*'
+    deltafiles = glob.glob(os.path.join(deltas_dir, f"delta{searchstr}.fits.gz"))
+
+    if ncpu=='all':
+        ncpu = multiprocessing.cpu_count()
+
+    print("Nb of delta files:", len(files))
+    print("Number of cpus:", multiprocessing.cpu_count())
+
+    with Pool(ncpu) as pool:
+        output_get_qso_deltas = pool.starmap(
+            get_qso_deltas_singlefile,
+            [[f, qso_cat, lambda_min, lambda_max] for f in deltafiles]
+        )
+
+    for x in output_get_qso_deltas:
+        if x is None: print("output of get_qso_deltas is None")  # should not happen in principle
+
+    output_get_qso_deltas = [x for x in output_get_qso_deltas if x is not None]
+    los_table = vstack([output_get_qso_deltas[i] for i in range(len(output_get_qso_deltas))])
+
+    if outputfile is not None:
+        los_table.write(outputfile)
+
+    return los_table
 
