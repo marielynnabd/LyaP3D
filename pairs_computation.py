@@ -79,7 +79,7 @@ def get_pairs_single_los(i_los, all_los_table, ang_sep_max, radec_names=['ra', '
     return single_los_pairs_table
 
 
-def compute_pairs(all_los_table, ang_sep_max, radec_names):
+def compute_pairs(all_los_table, ang_sep_max, radec_names=['ra', 'dec'], outputfile=None):
 
     # Getting los_pairs_table from mock 
     if radec_names == ['x', 'y']:
@@ -93,7 +93,8 @@ def compute_pairs(all_los_table, ang_sep_max, radec_names):
     output_get_pairs_single_los = [x for x in output_get_pairs_single_los if x is not None] # For sanity check
     all_los_pairs_table = vstack([output_get_pairs_single_los[i] for i in range(len(output_get_pairs_single_los))])
 
-    return all_los_pairs_table
+    if outputfile is not None:
+        all_los_pairs_table.write(outputfile)
     
-        
+    return all_los_pairs_table
 
