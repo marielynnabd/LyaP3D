@@ -5,11 +5,6 @@ import os, sys
 from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
-import matplotlib.pyplot as plt
-
-sys.path.insert(0, os.environ['HOME']+'/Software/picca/py')
-from picca import constants
-from picca.constants import SPEED_LIGHT # in km/s
 
 
 def get_qso_deltas(delta_file_name, qso_cat, lambda_min, lambda_max):
@@ -53,17 +48,21 @@ def get_qso_deltas(delta_file_name, qso_cat, lambda_min, lambda_max):
     wavelength_ref = wavelength_ref[mask_wavelength_ref]
     #print('wavelength_ref', len(wavelength_ref), wavelength_ref)
     
-    # Initializing table los_table
-    los_table = Table()
-    
     delta_file = fits.open(delta_file_name)
-    n_hdu = len(delta_file) # Each delta file contains many hdu
-    print("DR16 delta file ", delta_file_name, ":", n_hdu-1, "HDUs")
+    n_hdu = len(delta_file)-1 # Each delta file contains many hdu (don't take into account HDU0)
+    print("DR16 delta file ", delta_file_name, ":", n_hdu, "HDUs")
     n_masked = 0
 
-    for i in range(1, n_hdu):
-        delta_i_header = delta_file[i].header
-        delta_i_data = delta_file[i].data
+    # Initializing table los_table
+    los_table = Table()
+    los_table['ra'] = np.ones(n_hdu) * np.nan
+    los_table['dec'] = np.ones(n_hdu) * np.nan
+    los_table['delta_los'] = np.zeros((n_hdu, len(wavelength_ref)))
+    los_table['wavelength'] = np.zeros((n_hdu, len(wavelength_ref)))
+
+    for i in range(n_hdu):
+        delta_i_header = delta_file[i+1].header
+        delta_i_data = delta_file[i+1].data
         delta_ID = delta_i_header['THING_ID']
         
         if delta_ID in qso_thing_id:
@@ -83,21 +82,17 @@ def get_qso_deltas(delta_file_name, qso_cat, lambda_min, lambda_max):
                 if len(wavelength[mask_wavelength]) == len(wavelength_ref):
                     
                     if np.allclose(wavelength[mask_wavelength], wavelength_ref):
-                        # Initializing table
-                        delta_table = Table()
-                        delta_table['delta_los'] = delta_los[mask_wavelength]
-                        delta_table['wavelength'] = wavelength[mask_wavelength]
-                        delta_table['ra'] = delta_i_header['RA'] * 180 / np.pi  # must convert rad --> dec.
-                        delta_table['dec'] = delta_i_header['DEC'] * 180 / np.pi
-
-                        # Stacking
-                        los_table = vstack([los_table, delta_table])
-                        
+                        los_table[i]['ra'] = delta_i_header['RA'] * 180 / np.pi  # must convert rad --> dec.
+                        los_table[i]['dec'] = delta_i_header['DEC'] * 180 / np.pi  # must convert rad --> dec.
+                        los_table[i]['delta_los'] = delta_los[mask_wavelength]
+                        los_table[i]['wavelength'] = wavelength[mask_wavelength]
                     else:
                         print('Warning')  # should not happen in principle
                 else:
                     n_masked += 1
 
+    mask_los_used = ~np.isnan(los_table['ra'])
+    los_table = los_table[mask_los_used]
     print("DR16 delta file", delta_file_name,":",len(los_table),"LOS used")
     print("                 (",n_masked,"LOS not used presumably due to masked pixels)")
     return los_table
