@@ -4,7 +4,7 @@ import numpy as np
 import os, sys, glob
 import multiprocessing
 from multiprocessing import Pool
-
+import fitsio
 from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
@@ -76,10 +76,10 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
     los_table['dec'] = np.ones(n_hdu) * np.nan
     los_table['delta_los'] = np.zeros((n_hdu, len(wavelength_ref)))
     los_table['wavelength'] = np.zeros((n_hdu, len(wavelength_ref)))
-    los_table['THING_ID'] = np.ones(len(n_hdu)) * np.nan
+    los_table['THING_ID'] = np.ones(n_hdu, dtype='>i8') * np.nan
     if include_snr_reso:
-        los_table['MEANRESOLUTION'] = np.zeros(len(n_hdu))
-        los_table['MEANSNR'] = np.zeros(len(n_hdu))
+        los_table['MEANRESOLUTION'] = np.zeros(n_hdu)
+        los_table['MEANSNR'] = np.zeros(n_hdu)
 
     for i in range(n_hdu):
         delta_i_header = delta_file[i+1].header
@@ -134,7 +134,7 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
     los_table = los_table[mask_los_used]
     print("DR16 delta file", delta_file_name,":",len(los_table),"LOS used")
     if n_masked>0:
-        print("                 (",n_masked,"LOS not used presumably due to masked pixels)")
+        print("    (",n_masked,"LOS not used presumably due to masked pixels)")
 
     return los_table
 
@@ -217,9 +217,11 @@ def get_snr_reso_sdss(qso_cat, thing_id, spec_dir, wavelength_ref):
     ivar = (np.array(hdul[1]["ivar"][:], dtype=np.float64) * hdul[1]["and_mask"][:] == 0)
     wdisp = hdul[1]["wdisp"][:]
 
-    mask_wavelength = (log_lambda >= np.min(wavelength_ref)-1.e-8) & (log_lambda <= np.max(wavelength_ref)+1.e-8)
-    if not np.allclose(wavelength[mask_wavelength], wavelength_ref):
-        print("WARNING loglambda not matching wavelength_ref")  # should not happen in principle
+    mask_wavelength = (log_lambda >= np.min(wavelength_ref)) & (log_lambda <= np.max(wavelength_ref))
+    if np.sum(mask_wavelength)==0:
+        print("No loglam matching RoI")  # should not happen in principle
+        return (0, 0)
+
     log_lambda = log_lambda[mask_wavelength]
     flux = flux[mask_wavelength]
     ivar = ivar[mask_wavelength]
