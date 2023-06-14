@@ -8,9 +8,12 @@ from multiprocessing import Pool
 from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
+from scipy.constants import speed_of_light as speed_light
+SPEED_LIGHT = speed_light / 1000.  # [km/s]
 
 
-def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, with_interpolation=False):
+def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
+                              include_snr_reso=False, spec_dir=None, with_interpolation=False):
     """ This function returns a table of ra, dec, wavelength and delta for each of the QSOs in qso_cat.
     Wavelenghts are selected in [lambda_min, lambda_max]
 
@@ -27,6 +30,13 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, 
 
     lambda_max: Float
     Value of the maximum forest wavelength required
+
+    include_snr_reso: bool, default False
+    If set, load SDSS spectra from `spec_dir`, and includes
+    MEANRESOLUTION and MEANSNR to los_table
+
+    spec_dir: String, default None
+    Required if include_reso_and_snr is True
 
     with_interpolation: bool, default False
     If True, interpolate the deltas on the reference BOSS wavelength grid.
@@ -66,6 +76,10 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, 
     los_table['dec'] = np.ones(n_hdu) * np.nan
     los_table['delta_los'] = np.zeros((n_hdu, len(wavelength_ref)))
     los_table['wavelength'] = np.zeros((n_hdu, len(wavelength_ref)))
+    los_table['THING_ID'] = np.ones(len(n_hdu)) * np.nan
+    if include_snr_reso:
+        los_table['MEANRESOLUTION'] = np.zeros(len(n_hdu))
+        los_table['MEANSNR'] = np.zeros(len(n_hdu))
 
     for i in range(n_hdu):
         delta_i_header = delta_file[i+1].header
@@ -104,10 +118,17 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, 
                         los_table[i]['dec'] = delta_i_header['DEC'] * 180 / np.pi
                         los_table[i]['delta_los'] = delta_los[mask_wavelength]
                         los_table[i]['wavelength'] = wavelength[mask_wavelength]
+                        los_table[i]['THING_ID'] = delta_ID
+
                     else:
                         print('Warning')  # should not happen in principle
                 else:
                     n_masked += 1
+
+        if (not np.isnan(los_table[i]['ra'])) and include_snr_reso:
+            meansnr, meanreso = get_snr_reso_sdss(qso_cat, delta_ID, spec_dir, wavelength_ref)
+            los_table[i]['MEANSNR'] = meansnr
+            los_table[i]['MEANRESOLUTION'] = meanreso
 
     mask_los_used = ~np.isnan(los_table['ra'])
     los_table = los_table[mask_los_used]
@@ -119,7 +140,8 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, 
 
 
 
-def get_los_table_dr16(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all', outputfile=None):
+def get_los_table_dr16(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all',
+                       outputfile=None, include_snr_reso=False, spec_dir=None):
     """ This function returns a table of ra, dec, wavelength and delta for each of the QSOs in qso_cat.
     Wavelenghts are selected in [lambda_min, lambda_max]
     Wrapper around get_qso_deltas_singlefile
@@ -162,7 +184,7 @@ def get_los_table_dr16(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all', 
     with Pool(ncpu) as pool:
         output_get_qso_deltas = pool.starmap(
             get_qso_deltas_singlefile,
-            [[f, qso_cat, lambda_min, lambda_max] for f in deltafiles]
+            [[f, qso_cat, lambda_min, lambda_max, include_snr_reso, spec_dir] for f in deltafiles]
         )
 
     for x in output_get_qso_deltas:
@@ -176,3 +198,59 @@ def get_los_table_dr16(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all', 
 
     return los_table
 
+
+def get_snr_reso_sdss(qso_cat, thing_id, spec_dir, wavelength_ref):
+    # Function used in get_qso_deltas_singlefile
+    #  inspired from picca/py/picca/delta_extraction/data_catalogues/sdss_data.py
+
+    w, = np.where(np.isin(qso_cat['THING_ID'], thing_id))
+    if len(w)!=1: print("Warning THING_ID")  # should not happen in principle
+    plate = qso_cat[w[0]]["PLATE"]
+    mjd = qso_cat[w[0]]["MJD"]
+    fiberid = qso_cat[w[0]]["FIBERID"]
+    filename = (f"{spec_dir}/{plate}/spec-{plate}-{mjd}-"
+                    f"{fiberid:04d}.fits")
+    hdul = fitsio.FITS(filename)
+
+    log_lambda = np.array(hdul[1]["loglam"][:], dtype=np.float64)
+    flux = np.array(hdul[1]["flux"][:], dtype=np.float64)
+    ivar = (np.array(hdul[1]["ivar"][:], dtype=np.float64) * hdul[1]["and_mask"][:] == 0)
+    wdisp = hdul[1]["wdisp"][:]
+
+    mask_wavelength = (log_lambda >= np.min(wavelength_ref)-1.e-8) & (log_lambda <= np.max(wavelength_ref)+1.e-8)
+    if not np.allclose(wavelength[mask_wavelength], wavelength_ref):
+        print("WARNING loglambda not matching wavelength_ref")  # should not happen in principle
+    log_lambda = log_lambda[mask_wavelength]
+    flux = flux[mask_wavelength]
+    ivar = ivar[mask_wavelength]
+    wdisp = wdisp[mask_wavelength]
+
+    reso = _spectral_resolution(wdisp, fiberid, log_lambda)
+    snr = flux * np.sqrt(ivar)
+
+    return (np.mean(snr), np.mean(reso))
+
+
+def _spectral_resolution(wdisp, fiberid, log_lambda):
+    # adapted from picca/py/picca/delta_extraction/utils_pk1d.py
+    reso = wdisp * SPEED_LIGHT * 1.0e-4 * np.log(10.)
+
+    lambda_ = np.power(10., log_lambda)
+    # compute the wavelength correction
+    correction = 1.267 - 0.000142716 * lambda_ + 1.9068e-08 * lambda_ * lambda_
+    correction[lambda_ > 6000.0] = 1.097
+
+    # add the fiberid correction
+    # fiberids greater than 500 corresponds to the second spectrograph
+    fiberid = fiberid % 500
+    if fiberid < 100:
+        correction = (1. + (correction - 1) * .25 + (correction - 1) * .75 *
+                      (fiberid) / 100.)
+    elif fiberid > 400:
+        correction = (1. + (correction - 1) * .25 + (correction - 1) * .75 *
+                      (500 - fiberid) / 100.)
+
+    # apply the correction
+    reso *= correction
+
+    return reso
