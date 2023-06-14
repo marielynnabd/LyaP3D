@@ -210,6 +210,9 @@ def get_snr_reso_sdss(qso_cat, thing_id, spec_dir, wavelength_ref):
     fiberid = qso_cat[w[0]]["FIBERID"]
     filename = (f"{spec_dir}/{plate}/spec-{plate}-{mjd}-"
                     f"{fiberid:04d}.fits")
+    if not os.path.isfile(filename):  # This happens...
+        print("File does not exist:", filename)
+        return (0, 0)
     hdul = fitsio.FITS(filename)
 
     log_lambda = np.array(hdul[1]["loglam"][:], dtype=np.float64)
