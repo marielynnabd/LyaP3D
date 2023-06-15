@@ -102,9 +102,33 @@ def get_possible_pairs(i_los, all_los_table, los_number, ang_sep_max, radec_name
     
     return los_pairs_table
 
+def compute_resolution_correction(resolution, k_parallel, delta_v):
+    """ This function computes the resolution correction for one LOS
+    
+    Arguments:
+    ----------
+    resolution: Float
+    Mean resolution of LOS.
+    
+    k_parallel: Array
+    Array of parallel wavenumber.
+    
+    delta_v: Float
+    c x (ln_lambda_1 - ln_lambda_2).
+    
+    Return:
+    -------
+    resolution_correction: Float
+    
+    """
+    
+    resolution_correction = np.exp(-1/2 * (k_parallel * resolution)**2) * np.sin(k_parallel * delta_v / 2) / (k_parallel * delta_v / 2)
+    
+    return resolution_correction
 
 def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, 
-                         minimum_snr_p_cross=None, data_type='mocks', units='Angstrom'):
+                         minimum_snr_p_cross=None, resolution_correction=True, 
+                         data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for pairs with angular separations > 0 (called cross power spectrum):
           - Takes mock and corresponfing los_pairs_table
           _ Computes cross power spectrum for each pair
@@ -123,6 +147,9 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges,
     
     minimum_snr_p_cross: Float, Default is None
     The value of minimum snr used for snr cut.
+    
+    resolution_correction: Boolean, Default is True
+    If we want to apply a resolution correction or not.
     
     data_type: String, Options: 'mocks', 'real'
     The type of data set on which we want to run the cross power spectrum computation.
@@ -181,6 +208,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges,
     p_cross_table['k_parallel'] = np.zeros((len(ang_sep_bin_centers), Nk))
     p_cross_table['mean_power_spectrum'] = np.zeros((len(ang_sep_bin_centers), Nk))
     p_cross_table['error_power_spectrum'] = np.zeros((len(ang_sep_bin_centers), Nk))
+    p_cross_table['resolution_correction'] = np.zeros((len(ang_sep_bin_centers), Nk))
     
     # p_cross computation
     for i_ang_sep, ang_sep in enumerate(ang_sep_bin_edges[:-1]):
@@ -226,17 +254,28 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges,
         else:
             p_cross *= SPEED_LIGHT
             k_parallel /= SPEED_LIGHT
+            
+        if resolution_correction == True:
+            delta_v = SPEED_LIGHT * delta_lambda
+            resolution_los1 = all_los_table['MEANRESOLUTION'][index_los1]
+            resolution_los2 = all_los_table['MEANRESOLUTION'][index_los2]
+            resolution_correction_los1 = compute_resolution_correction(resolution_los1, k_parallel, delta_v)
+            resolution_correction_los2 = compute_resolution_correction(resolution_los2, k_parallel, delta_v)
+            resolution_correction_pair = resolution_correction_los1 * resolution_correction_los2
 
         # mean_p_cross computation
         mean_p_cross = np.zeros(Nk)
+        mean_resolution_correction = np.zeros(Nk)
         error_p_cross = np.zeros(Nk)
         for i in range(Nk):
             mean_p_cross[i] = np.mean(p_cross.real[:,i])
             error_p_cross[i] = np.std(p_cross.real[:,i]) / np.sqrt(N_pairs - 1)
+            mean_resolution_correction[i] = np.mean(resolution_correction_pair[:,i])
 
         p_cross_table['k_parallel'][i_ang_sep, :] = k_parallel
         p_cross_table['mean_power_spectrum'][i_ang_sep, :] = mean_p_cross  
         p_cross_table['error_power_spectrum'][i_ang_sep, :] = error_p_cross
+        p_cross_table['resolution_correction'][i_ang_sep, :] = mean_resolution_correction
         
     return p_cross_table
 
