@@ -126,6 +126,7 @@ def compute_resolution_correction(resolution, k_parallel, delta_v):
     
     return resolution_correction
 
+
 def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, 
                          minimum_snr_p_cross=None, resolution_correction=True, 
                          data_type='mocks', units='Angstrom'):
@@ -261,26 +262,27 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges,
             resolution_los2 = all_los_table['MEANRESOLUTION'][index_los2]
             resolution_correction_los1 = compute_resolution_correction(resolution_los1, k_parallel, delta_v)
             resolution_correction_los2 = compute_resolution_correction(resolution_los2, k_parallel, delta_v)
-            resolution_correction_pair = resolution_correction_los1 * resolution_correction_los2
+            resolution_correction_p_cross = resolution_correction_los1 * resolution_correction_los2
 
         # mean_p_cross computation
         mean_p_cross = np.zeros(Nk)
-        mean_resolution_correction = np.zeros(Nk)
+        mean_resolution_correction_p_cross = np.zeros(Nk)
         error_p_cross = np.zeros(Nk)
         for i in range(Nk):
             mean_p_cross[i] = np.mean(p_cross.real[:,i])
             error_p_cross[i] = np.std(p_cross.real[:,i]) / np.sqrt(N_pairs - 1)
-            mean_resolution_correction[i] = np.mean(resolution_correction_pair[:,i])
+            mean_resolution_correction_p_cross[i] = np.mean(resolution_correction_p_cross[:,i])
 
         p_cross_table['k_parallel'][i_ang_sep, :] = k_parallel
         p_cross_table['mean_power_spectrum'][i_ang_sep, :] = mean_p_cross  
         p_cross_table['error_power_spectrum'][i_ang_sep, :] = error_p_cross
-        p_cross_table['resolution_correction'][i_ang_sep, :] = mean_resolution_correction
+        p_cross_table['resolution_correction'][i_ang_sep, :] = mean_resolution_correction_p_cross
         
     return p_cross_table
 
 
-def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, data_type='mocks', units='Angstrom'):
+def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, resolution_correction=True, 
+                        data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for angular separation = 0 (Lya forest and itself, called auto power spectrum):
           - Takes all_los_table
           - Computes auto power spectrum for each LOS 
@@ -293,6 +295,9 @@ def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, data_type='mocks
     
     minimum_snr_p_auto: Float, Default is None
     The value of minimum snr used for snr cut.
+    
+    resolution_correction: Boolean, Default is True
+    If we want to apply a resolution correction or not.
     
     data_type: String, Options: 'mocks', 'real'
     The type of data set on which we want to run the auto power spectrum computation.
@@ -346,6 +351,7 @@ def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, data_type='mocks
     p_auto_table['k_parallel'] = np.zeros((1, Nk))
     p_auto_table['mean_power_spectrum'] = np.zeros((1, Nk))
     p_auto_table['error_power_spectrum'] = np.zeros((1, Nk))
+    p_auto_table['resolution_correction'] = np.zeros((1, Nk))
     
     # p_auto computation in Angstrom units
     p_auto = (fft_delta.real**2 + fft_delta.imag**2) * delta_lambda / Npix # same units as delta_lambda
@@ -372,25 +378,38 @@ def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, data_type='mocks
     else:
         p_auto *= SPEED_LIGHT
         k_parallel /= SPEED_LIGHT
+    
+    # resolution correction computation
+    if resolution_correction == True:
+        delta_v = SPEED_LIGHT * delta_lambda
+        resolution_los = all_los_table['MEANRESOLUTION']
+        if minimum_snr_p_auto is not None:
+            resolution_los = resolution_los[snr_cut]
+
+        resolution_correction_los = compute_resolution_correction(resolution_los, k_parallel, delta_v)
+        resolution_correction_p_auto = resolution_correction_los**2
        
     # mean_p_auto computation
     mean_p_auto = np.zeros(Nk)
     error_p_auto = np.zeros(Nk)
-    
+    mean_resolution_correction_p_auto = np.zeros(Nk)
     for i in range(Nk):
         mean_p_auto[i] = np.mean(p_auto[:, i])
         error_p_auto[i] = np.std(p_auto[:, i]) / np.sqrt(len(p_auto) - 1)  # TODO check len(p_auto) = n_los
-        
+        mean_resolution_correction_p_auto = np.mean(resolution_correction_p_auto[:, i])
+
     p_auto_table['k_parallel'][0, :] = k_parallel
     p_auto_table['mean_power_spectrum'][0, :] = mean_p_auto  
     p_auto_table['error_power_spectrum'][0, :] = error_p_auto
+    p_auto_table['resolution_correction'][0, :] = mean_resolution_correction_p_auto
     p_auto_table['N'][0] = len(p_auto)
     
     return p_auto_table
 
 
 def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type='mocks', 
-                                units='Angstrom', minimum_snr_p_cross=None, minimum_snr_p_auto=None):
+                                units='Angstrom', minimum_snr_p_cross=None, minimum_snr_p_auto=None, 
+                                resolution_correction=True):
     """ - This function computes mean_power_spectrum: 
             - Takes all_los_table and pairs (1 mock)
             - Computes mean_p_auto and mean_p_cross using above functions
@@ -409,9 +428,11 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
     p_cross_table = compute_mean_p_cross(all_los_table=all_los_table, los_pairs_table=los_pairs_table, 
                                          ang_sep_bin_edges=ang_sep_bin_edges,
                                          minimum_snr_p_cross=minimum_snr_p_cross, 
+                                         resolution_correction=resolution_correction,
                                          data_type=data_type, units=units)
     p_auto_table = compute_mean_p_auto(all_los_table=all_los_table, 
                                        minimum_snr_p_auto=minimum_snr_p_auto, 
+                                       resolution_correction=resolution_correction,
                                        data_type=data_type, units=units)
     mock_mean_power_spectrum = vstack([p_auto_table, p_cross_table])
     
