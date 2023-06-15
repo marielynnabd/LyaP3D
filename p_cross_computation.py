@@ -122,7 +122,7 @@ def compute_resolution_correction(resolution, k_parallel, delta_v):
     
     """
     
-    resolution_correction = np.exp(-1/2 * (k_parallel * resolution)**2) * np.sin(k_parallel * delta_v / 2) / (k_parallel * delta_v / 2)
+    resolution_correction = np.exp(-1/2 * (k_parallel * resolution)**2) * np.sinc(k_parallel * delta_v / 2 / np.pi)
     
     return resolution_correction
 
