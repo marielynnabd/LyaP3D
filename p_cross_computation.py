@@ -103,7 +103,8 @@ def get_possible_pairs(i_los, all_los_table, los_number, ang_sep_max, radec_name
     return los_pairs_table
 
 
-def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type='mocks', units='Angstrom'):
+def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, 
+                         minimum_snr_p_cross=None, data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for pairs with angular separations > 0 (called cross power spectrum):
           - Takes mock and corresponfing los_pairs_table
           _ Computes cross power spectrum for each pair
@@ -119,6 +120,9 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
     
     ang_sep_bin_edges: Array of floats
     Edges of the angular separation bins we want to use
+    
+    minimum_snr_p_cross: Float, Default is None
+    The value of minimum snr used for snr cut.
     
     data_type: String, Options: 'mocks', 'real'
     The type of data set on which we want to run the cross power spectrum computation.
@@ -152,14 +156,21 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
     # Centers of angular separation bins
     ang_sep_bin_centers = np.around((ang_sep_bin_edges[1:] + ang_sep_bin_edges[:-1]) / 2, 5)
     
+    print('Pcross computation')
     # Parameters definitions
-    Npix = len(all_los_table['delta_los'][0])
-    print('Npix', Npix)
-    # delta_lambda = all_los_table['wavelength [Angstrom]'][0][1] - all_los_table['wavelength [Angstrom]'][0][0]
     delta_lambda = all_los_table['wavelength'][0][1] - all_los_table['wavelength'][0][0]
-
+    delta_los = all_los_table['delta_los']
+    Npix = len(delta_los[0])
+    print('Npix', Npix)
+    
+    if minimum_snr_p_cross is not None:
+        print('snr cut applied')
+        snr_los1 = all_los_table['MEANSNR'][ los_pairs_table['index_los1'] ]
+        snr_los2 = all_los_table['MEANSNR'][ los_pairs_table['index_los2'] ]
+        snr_cut = (snr_los1 > minimum_snr_p_cross) & (snr_los2 > minimum_snr_p_cross)
+        
     # FFT of deltas
-    fft_delta = np.fft.rfft(all_los_table['delta_los'])
+    fft_delta = np.fft.rfft(delta_los)
     Nk = fft_delta.shape[1] # bcz of rfft, otherwise Nk = Npix if we do fft
     
     # Initializing p_cross_table
@@ -178,6 +189,9 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
         
         select = (los_pairs_table['ang_separation'] > ang_sep_bin_edges[i_ang_sep]) & (
                 los_pairs_table['ang_separation'] <= ang_sep_bin_edges[i_ang_sep+1])
+        
+        if minimum_snr_p_cross is not None:
+            select = (select & snr_cut)
 
         N_pairs = np.sum(select)
         mean_ang_separation = np.mean(los_pairs_table['ang_separation'][select])
@@ -227,7 +241,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
     return p_cross_table
 
 
-def compute_mean_p_auto(all_los_table, minimum_snr=2, data_type='mocks', units='Angstrom'):
+def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for angular separation = 0 (Lya forest and itself, called auto power spectrum):
           - Takes all_los_table
           - Computes auto power spectrum for each LOS 
@@ -238,7 +252,7 @@ def compute_mean_p_auto(all_los_table, minimum_snr=2, data_type='mocks', units='
     all_los_table: Table
     Mock.
     
-    minimum_snr: Float, Default is 2
+    minimum_snr_p_auto: Float, Default is None
     The value of minimum snr used for snr cut.
     
     data_type: String, Options: 'mocks', 'real'
@@ -268,25 +282,22 @@ def compute_mean_p_auto(all_los_table, minimum_snr=2, data_type='mocks', units='
     rcomov = Cosmo.get_r_comov
     distang = Cosmo.get_dist_m
     hubble = Cosmo.get_hubble
+
+    print('P_auto computation')
+    # Parameters definitions
+    delta_lambda = all_los_table['wavelength'][0][1] - all_los_table['wavelength'][0][0]
+    delta_los = all_los_table['delta_los']
+    Npix = len(delta_los[0])
+    print('Npix', Npix)
+    if minimum_snr_p_auto is not None:
+        print('snr cut applied')
+        snr_cut = (all_los_table['MEANSNR'] > minimum_snr_p_auto)
+        delta_los = delta_los[snr_cut]
     
-    if data_type == 'mocks':
-        # Parameters definitions
-        Npix = len(all_los_table['delta_los'][0])
-        # delta_lambda = all_los_table['wavelength [Angstrom]'][0][1] - all_los_table['wavelength [Angstrom]'][0][0]
-        delta_lambda = all_los_table['wavelength'][0][1] - all_los_table['wavelength'][0][0]
-        # fft of deltas
-        fft_delta = np.fft.rfft(all_los_table['delta_los'])
-        Nk = fft_delta.shape[1]
-    else:
-        snr_cut = (all_los_table['MEANSNR'] > minimum_snr)
-        # Parameters definitions
-        Npix = len(all_los_table['delta_los'][snr_cut][0])
-        # delta_lambda = all_los_table['wavelength [Angstrom]'][0][1] - all_los_table['wavelength [Angstrom]'][0][0]
-        delta_lambda = all_los_table['wavelength'][snr_cut][0][1] - all_los_table['wavelength'][snr_cut][0][0]
-        # fft of deltas
-        fft_delta = np.fft.rfft(all_los_table['delta_los'][snr_cut])
-        Nk = fft_delta.shape[1]
-        
+    # FFT of deltas
+    fft_delta = np.fft.rfft(delta_los)
+    Nk = fft_delta.shape[1]
+    print('Nk', Nk)
 
     # Initializing p_auto_table
     p_auto_table = Table()
@@ -339,8 +350,8 @@ def compute_mean_p_auto(all_los_table, minimum_snr=2, data_type='mocks', units='
     return p_auto_table
 
 
-def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, 
-                                data_type='mocks', units='Angstrom', minimum_snr=2):
+def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type='mocks', 
+                                units='Angstrom', minimum_snr_p_cross=None, minimum_snr_p_auto=None):
     """ - This function computes mean_power_spectrum: 
             - Takes all_los_table and pairs (1 mock)
             - Computes mean_p_auto and mean_p_cross using above functions
@@ -356,8 +367,13 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
     Each row corresponds to the computed power spectrum in an angular spearation bin
     """
 
-    p_cross_table = compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type, units)
-    p_auto_table = compute_mean_p_auto(all_los_table, data_type=data_type, units=units, minimum_snr=minimum_snr)
+    p_cross_table = compute_mean_p_cross(all_los_table=all_los_table, los_pairs_table=los_pairs_table, 
+                                         ang_sep_bin_edges=ang_sep_bin_edges,
+                                         minimum_snr_p_cross=minimum_snr_p_cross, 
+                                         data_type=data_type, units=units)
+    p_auto_table = compute_mean_p_auto(all_los_table=all_los_table, 
+                                       minimum_snr_p_auto=minimum_snr_p_auto, 
+                                       data_type=data_type, units=units)
     mock_mean_power_spectrum = vstack([p_auto_table, p_cross_table])
     
     return mock_mean_power_spectrum
@@ -405,8 +421,10 @@ def wavenumber_rebin(power_spectrum_table, n_kbins):
     return power_spectrum_table
 
 
-def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, minimum_snr=2, k_binning=False, 
-                                    data_type='mocks', units='Angstrom', radec_names=['ra', 'dec']): 
+def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, 
+                                    minimum_snr_p_cross=None, minimum_snr_p_auto=None, 
+                                    k_binning=False, data_type='mocks', units='Angstrom', 
+                                    radec_names=['ra', 'dec']): 
     """ - This function computes all_mocks_mean_power_spectrum:
             - Takes all mocks or one mock
             - Gets pairs table for each mock separately
@@ -425,6 +443,9 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, minim
     
     n_kbins: Integer
     Number of wavenumber bins if k_binning
+    
+    minimum_snr_p_cross, minimum_snr_p_auto: Floats, Defaults are None
+    The values of minimum snr required for both p_cross and p_auto computation.
     
     k_binning: Boolean, Default to False
     Rebin power spectrum using wavenumber_rebin function
@@ -503,8 +524,12 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, minim
         # Computing the mean_p_cross for each mock
         # print('Computing mean power spectrum in ', units)
         print('Computing mean power spectrum in input units')
-        mock_mean_power_spectrum = compute_mean_power_spectrum(all_los_table, los_pairs_table, 
-                                                               ang_sep_bin_edges, data_type, units, minimum_snr=2)
+        mock_mean_power_spectrum = compute_mean_power_spectrum(all_los_table=all_los_table, 
+                                                               los_pairs_table=los_pairs_table, 
+                                                               ang_sep_bin_edges=ang_sep_bin_edges, 
+                                                               data_type=data_type, units=units,
+                                                               minimum_snr_p_cross=minimum_snr_p_cross, 
+                                                               minimum_snr_p_auto=minimum_snr_p_auto)
         
         # Stacking power spectra of all mocks in one table
         all_mocks_mean_power_spectrum = vstack([all_mocks_mean_power_spectrum, mock_mean_power_spectrum])  
@@ -558,7 +583,7 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, minim
         
     if k_binning:
         print('Wavenumber rebinning')
-        final_power_spectrum = wavenumber_rebin(final_power_spectrum, n_kbins)
+        final_power_spectrum = wavenumber_rebin(power_spectrum_table=final_power_spectrum, n_kbins=n_kbins)
         
     return final_power_spectrum
 
