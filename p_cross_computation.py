@@ -188,6 +188,11 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges,
     print('Pcross computation')
     # Parameters definitions
     delta_lambda = all_los_table['wavelength'][0][1] - all_los_table['wavelength'][0][0]
+    
+    ## if we're in eBOSS case, we have log(lambda) and not lambda so a conversion is required
+    # if data_type == 'real':
+    #     delta_lambda *= SPEED_LIGHT * np.log(10.)
+    
     delta_los = all_los_table['delta_los']
     Npix = len(delta_los[0])
     print('Npix', Npix)
@@ -253,8 +258,8 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges,
                 p_cross *= h # [Mpc/h]
                 k_parallel /= h # [Mpc/h]^-1
         else:
-            p_cross *= SPEED_LIGHT
-            k_parallel /= SPEED_LIGHT
+            p_cross *= SPEED_LIGHT * np.log(10.)
+            k_parallel /= SPEED_LIGHT * np.log(10.)
             
         if resolution_correction == True:
             delta_v = SPEED_LIGHT * delta_lambda
@@ -330,19 +335,29 @@ def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, resolution_corre
     hubble = Cosmo.get_hubble
 
     print('P_auto computation')
+    
     # Parameters definitions
     delta_lambda = all_los_table['wavelength'][0][1] - all_los_table['wavelength'][0][0]
+    
+    ## if we're in eBOSS case, we have log(lambda) and not lambda so a conversion is required
+    # if data_type == 'real':
+    #     delta_lambda *= SPEED_LIGHT * np.log(10.)
+
     delta_los = all_los_table['delta_los']
     Npix = len(delta_los[0])
     print('Npix', Npix)
+    
     if minimum_snr_p_auto is not None:
         print('snr cut applied')
         snr_mask = (all_los_table['MEANSNR'] > minimum_snr_p_auto)
+        
     else:
         snr_mask = np.ones(len(all_los_table), dtype=bool)
+        
     if max_resolution is not None:
         print("reso cut applied")
         reso_mask = (all_los_table['MEANRESOLUTION'] < max_resolution)
+        
     else:
         reso_mask = np.ones(len(all_los_table), dtype=bool)
     delta_los = delta_los[ snr_mask & reso_mask ]
@@ -384,8 +399,8 @@ def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, resolution_corre
                 p_auto *= h # [Mpc/h]
                 k_parallel /= h # [Mpc/h]^-1
     else:
-        p_auto *= SPEED_LIGHT
-        k_parallel /= SPEED_LIGHT
+        p_auto *= SPEED_LIGHT * np.log(10.)
+        k_parallel /= SPEED_LIGHT * np.log(10.)
     
     # resolution correction computation
     if resolution_correction == True:
