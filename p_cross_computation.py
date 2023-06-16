@@ -102,6 +102,7 @@ def get_possible_pairs(i_los, all_los_table, los_number, ang_sep_max, radec_name
     
     return los_pairs_table
 
+
 def compute_resolution_correction(resolution, k_parallel, delta_v):
     """ This function computes the resolution correction for one LOS
     
@@ -121,9 +122,9 @@ def compute_resolution_correction(resolution, k_parallel, delta_v):
     resolution_correction: Float
     
     """
-    
+
     resolution_correction = np.exp(-1/2 * (k_parallel * resolution)**2) * np.sinc(k_parallel * delta_v / 2 / np.pi)
-    
+
     return resolution_correction
 
 
@@ -235,9 +236,8 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges,
         k_parallel = 2 * np.pi * np.fft.rfftfreq(Npix, delta_lambda) # same units as delta_lambda
 
         # Add pixelization factor correction
-        pixelization_factor = np.sinc(k_parallel * delta_lambda / (2 * np.pi))**2
-
-        p_cross /= pixelization_factor
+        #pixelization_factor = np.sinc(k_parallel * delta_lambda / (2 * np.pi))**2
+        #p_cross /= pixelization_factor
         
         if data_type == 'mocks':
             # If the output unit desired is not Angstrom
@@ -260,8 +260,10 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges,
             delta_v = SPEED_LIGHT * delta_lambda
             resolution_los1 = all_los_table['MEANRESOLUTION'][index_los1]
             resolution_los2 = all_los_table['MEANRESOLUTION'][index_los2]
-            resolution_correction_los1 = compute_resolution_correction(resolution_los1, k_parallel, delta_v)
-            resolution_correction_los2 = compute_resolution_correction(resolution_los2, k_parallel, delta_v)
+            resgrid, kpargrid = np.meshgrid(resolution_los1, k_parallel, indexing='ij')
+            resolution_correction_los1 = compute_resolution_correction(resgrid, kpargrid, delta_v)
+            resgrid, kpargrid = np.meshgrid(resolution_los2, k_parallel, indexing='ij')
+            resolution_correction_los2 = compute_resolution_correction(resgrid, kpargrid, delta_v)
             resolution_correction_p_cross = resolution_correction_los1 * resolution_correction_los2
 
         # mean_p_cross computation
@@ -281,7 +283,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges,
     return p_cross_table
 
 
-def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, resolution_correction=True, 
+def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, resolution_correction=True, max_resolution=None,
                         data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for angular separation = 0 (Lya forest and itself, called auto power spectrum):
           - Takes all_los_table
@@ -335,8 +337,15 @@ def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, resolution_corre
     print('Npix', Npix)
     if minimum_snr_p_auto is not None:
         print('snr cut applied')
-        snr_cut = (all_los_table['MEANSNR'] > minimum_snr_p_auto)
-        delta_los = delta_los[snr_cut]
+        snr_mask = (all_los_table['MEANSNR'] > minimum_snr_p_auto)
+    else:
+        snr_mask = np.ones(len(all_los_table), dtype=bool)
+    if max_resolution is not None:
+        print("reso cut applied")
+        reso_mask = (all_los_table['MEANRESOLUTION'] < max_resolution)
+    else:
+        reso_mask = np.ones(len(all_los_table), dtype=bool)
+    delta_los = delta_los[ snr_mask & reso_mask ]
     
     # FFT of deltas
     fft_delta = np.fft.rfft(delta_los)
@@ -358,9 +367,8 @@ def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, resolution_corre
     k_parallel = 2 * np.pi * np.fft.rfftfreq(Npix, delta_lambda) # same units as delta_lambda
 
     # Add pixelization factor correction
-    pixelization_factor = np.sinc(k_parallel * delta_lambda / (2 * np.pi))**2
-
-    p_auto /= pixelization_factor
+    # pixelization_factor = np.sinc(k_parallel * delta_lambda / (2 * np.pi))**2
+    # p_auto /= pixelization_factor
 
     if data_type == 'mocks':
     
@@ -382,13 +390,14 @@ def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, resolution_corre
     # resolution correction computation
     if resolution_correction == True:
         delta_v = SPEED_LIGHT * delta_lambda
-        resolution_los = all_los_table['MEANRESOLUTION']
-        if minimum_snr_p_auto is not None:
-            resolution_los = resolution_los[snr_cut]
+        print(delta_v)
+        resolution_los = all_los_table['MEANRESOLUTION'][ snr_mask & reso_mask ]
 
-        resolution_correction_los = compute_resolution_correction(resolution_los, k_parallel, delta_v)
+        resgrid, kpargrid = np.meshgrid(resolution_los, k_parallel, indexing='ij')
+        resolution_correction_los = compute_resolution_correction(resgrid, kpargrid, delta_v)
         resolution_correction_p_auto = resolution_correction_los**2
-       
+               
+    print("Nlos=",len(delta_los))
     # mean_p_auto computation
     mean_p_auto = np.zeros(Nk)
     error_p_auto = np.zeros(Nk)
@@ -396,7 +405,7 @@ def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, resolution_corre
     for i in range(Nk):
         mean_p_auto[i] = np.mean(p_auto[:, i])
         error_p_auto[i] = np.std(p_auto[:, i]) / np.sqrt(len(p_auto) - 1)  # TODO check len(p_auto) = n_los
-        mean_resolution_correction_p_auto = np.mean(resolution_correction_p_auto[:, i])
+        mean_resolution_correction_p_auto[i] = np.mean(resolution_correction_p_auto[:, i])
 
     p_auto_table['k_parallel'][0, :] = k_parallel
     p_auto_table['mean_power_spectrum'][0, :] = mean_p_auto  
@@ -409,7 +418,7 @@ def compute_mean_p_auto(all_los_table, minimum_snr_p_auto=None, resolution_corre
 
 def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type='mocks', 
                                 units='Angstrom', minimum_snr_p_cross=None, minimum_snr_p_auto=None, 
-                                resolution_correction=True):
+                                resolution_correction=True, max_resolution=None):
     """ - This function computes mean_power_spectrum: 
             - Takes all_los_table and pairs (1 mock)
             - Computes mean_p_auto and mean_p_cross using above functions
@@ -433,7 +442,7 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
     p_auto_table = compute_mean_p_auto(all_los_table=all_los_table, 
                                        minimum_snr_p_auto=minimum_snr_p_auto, 
                                        resolution_correction=resolution_correction,
-                                       data_type=data_type, units=units)
+                                       data_type=data_type, units=units, max_resolution=max_resolution)
     mock_mean_power_spectrum = vstack([p_auto_table, p_cross_table])
     
     return mock_mean_power_spectrum
