@@ -120,7 +120,6 @@ def compute_resolution_correction(resolution, k_parallel, delta_v):
     Return:
     -------
     resolution_correction: Float
-    
     """
 
     resolution_correction = np.exp(-1/2 * (k_parallel * resolution)**2) * np.sinc(k_parallel * delta_v / 2 / np.pi)
@@ -129,7 +128,7 @@ def compute_resolution_correction(resolution, k_parallel, delta_v):
 
 
 def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_snr_p_cross=None, max_resolution_p_cross=None,
-                         resolution_correction=True, data_type='mocks', units='Angstrom'):
+                         resolution_correction=True, reshuffling=False, data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for pairs with angular separations > 0 (called cross power spectrum):
           - Takes mock and corresponfing los_pairs_table
           _ Computes cross power spectrum for each pair
@@ -154,6 +153,9 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     
     resolution_correction: Boolean, Default is True
     If we want to apply a resolution correction or not.
+    
+    reshuffling: Boolean, Default is False
+    This is done in case we want to compute a cross spectrum wihout signal, ie. by correlating pixels that aren't correlated.
     
     data_type: String, Options: 'mocks', 'real'
     The type of data set on which we want to run the cross power spectrum computation.
@@ -221,6 +223,10 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
         reso_mask = np.ones(len(los_pairs_table), dtype=bool)
 
     los_pairs_table = los_pairs_table[ (snr_mask & reso_mask) ]
+    
+    # This is done if we want to compute a P_cross without signal ie. correlating pixels that aren't correlated
+    if reshuffling==True:
+        los_pairs_table['index_los2'] = np.random.permutation(los_pairs_table['index_los2'])
 
     # FFT of deltas
     fft_delta = np.fft.rfft(delta_los)
@@ -300,7 +306,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     return p_cross_table
 
 
-def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_auto=None, resolution_correction=True,
+def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_auto=None, resolution_correction=True, 
                         data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for angular separation = 0 (Lya forest and itself, called auto power spectrum):
           - Takes all_los_table
@@ -443,7 +449,8 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
 
 def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type='mocks', 
                                 units='Angstrom', min_snr_p_cross=None, min_snr_p_auto=None,
-                                max_resolution_p_cross=None, max_resolution_p_auto=None, resolution_correction=True):
+                                max_resolution_p_cross=None, max_resolution_p_auto=None, 
+                                resolution_correction=True, reshuffling=False):
     """ - This function computes mean_power_spectrum: 
             - Takes all_los_table and pairs (1 mock)
             - Computes mean_p_auto and mean_p_cross using above functions
@@ -464,6 +471,7 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
                                          min_snr_p_cross=min_snr_p_cross,
                                          max_resolution_p_cross=max_resolution_p_cross,
                                          resolution_correction=resolution_correction,
+                                         reshuffling=reshuffling,
                                          data_type=data_type, units=units)
     p_auto_table = compute_mean_p_auto(all_los_table=all_los_table, 
                                        min_snr_p_auto=min_snr_p_auto, 
@@ -498,6 +506,7 @@ def wavenumber_rebin(power_spectrum_table, n_kbins):
     power_spectrum_table['k_parallel_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers))) # same units as k_parallel
     power_spectrum_table['mean_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
     power_spectrum_table['error_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
+    power_spectrum_table['resolution_correction_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
     
     for j in range(len(power_spectrum_table)):
     
@@ -510,9 +519,11 @@ def wavenumber_rebin(power_spectrum_table, n_kbins):
 
             mean_power_spectrum_rebinned = np.mean(power_spectrum_table['mean_power_spectrum'][j][select_k])
             error_power_spectrum_rebinned = np.mean(power_spectrum_table['error_power_spectrum'][j][select_k]) / np.sqrt(np.sum(select_k))
+            resolution_correction_rebinned = np.mean(power_spectrum_table['resolution_correction'][j][select_k])
             
             power_spectrum_table['mean_power_spectrum_rebinned'][j,ik_bin] = mean_power_spectrum_rebinned 
             power_spectrum_table['error_power_spectrum_rebinned'][j,ik_bin] = error_power_spectrum_rebinned
+            power_spectrum_table['resolution_correction_rebinned'][j,ik_bin] = resolution_correction_rebinned
             
     return power_spectrum_table
 
