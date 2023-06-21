@@ -20,7 +20,7 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
     Arguments:
     ----------
     delta_file_name: String
-    delta fits file, DR16 format
+    delta fits file, DR16 format.
 
     qso_cat: Table
     QSO catalog for which we want to find the corresponding deltas, using THING_ID
