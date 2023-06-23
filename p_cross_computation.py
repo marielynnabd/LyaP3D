@@ -13,6 +13,9 @@ sys.path.insert(0, os.environ['HOME']+'/Software/picca/py')
 from picca import constants
 from picca.constants import SPEED_LIGHT # in km/s
 
+sys.path.insert(0, os.environ['HOME']+'/Software')
+from LyaP3D.tools import rebin_vector
+
 lambda_lya = 1215.67 # Angstrom
 
 # Computing cosmo used for Conversions
@@ -481,26 +484,6 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
     mock_mean_power_spectrum = vstack([p_auto_table, p_cross_table])
     
     return mock_mean_power_spectrum
-
-
-def rebin_vector(arr, pack=2, rebin_opt='mean', verbose=True):
-    # Rebin 1D array. Not at all cpu-optimized
-    arr = np.asarray(arr)
-    if len(arr.shape)!=1 :
-        print("ERROR: only 1-D array in rebin_vector.")
-    if rebin_opt not in ['mean','sum'] :
-        print("ERROR: wrong option in rebin_vector.")
-    if verbose and (len(arr) % pack != 0):
-        print("WARNING: rebin_vector: pack not adapted to size, last bin will be wrong")
-    v, i = [], 0
-    while i+pack<=len(arr) :
-        if rebin_opt=='mean':
-            v.append(np.mean([arr[i:i+pack]]))
-        else:
-            v.append(np.sum([arr[i:i+pack]]))
-        i+=pack
-    return np.asarray(v)
-
 
 # def wavenumber_rebin(power_spectrum_table, n_kbins):
 def wavenumber_rebin(power_spectrum_table, rebin_factor):
