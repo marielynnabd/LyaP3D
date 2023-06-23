@@ -131,7 +131,7 @@ def compute_resolution_correction(resolution, k_parallel, delta_v):
 
 
 def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_snr_p_cross=None, max_resolution_p_cross=None,
-                         resolution_correction=True, reshuffling=False, data_type='mocks', units='Angstrom'):
+                         resolution_correction=False, reshuffling=False, data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for pairs with angular separations > 0 (called cross power spectrum):
           - Takes mock and corresponfing los_pairs_table
           _ Computes cross power spectrum for each pair
@@ -154,8 +154,8 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     max_resolution_cross: Float, Default is None
     The value of maximum resolution desired.
     
-    resolution_correction: Boolean, Default is True
-    If we want to apply a resolution correction or not.
+    resolution_correction: Boolean, Default is False
+    If we want to apply a resolution correction or not, this is only in the real data case.
     
     reshuffling: Boolean, Default is False
     This is done in case we want to compute a cross spectrum wihout signal, ie. by correlating pixels that aren't correlated.
@@ -165,6 +165,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
         - In the case of mocks: The cross power spectrum will be computed in [Angstrom] by default,
         because when we draw LOS to create mocks, wavelength = (1 + refshift) * lambda_lya [Angstrom].
         If another unit is desired, this must be specified in the argument units.
+        PS: In the case of mocks: min_snr_p_cross, max_resolution_cross, and resolution_correction must be set to default !
         - In the case of real data: The cross power spectrum will be first computed unitless,
         because wavelength = LOGLAM, therefore it is mandatory to multiply it my a factor c, and the output will be in [km/s].
     
@@ -245,7 +246,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     p_cross_table['mean_power_spectrum'] = np.zeros((len(ang_sep_bin_centers), Nk))
     p_cross_table['error_power_spectrum'] = np.zeros((len(ang_sep_bin_centers), Nk))
     p_cross_table['resolution_correction'] = np.zeros((len(ang_sep_bin_centers), Nk))
-    
+
     # p_cross computation
     for i_ang_sep, ang_sep in enumerate(ang_sep_bin_edges[:-1]):
         print('angular separation bin edges', ang_sep_bin_edges[i_ang_sep], ang_sep_bin_edges[i_ang_sep+1], 
@@ -285,12 +286,14 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
             delta_v = delta_lambda
             resolution_los1 = all_los_table['MEANRESOLUTION'][index_los1]
             resolution_los2 = all_los_table['MEANRESOLUTION'][index_los2]
-            
             resgrid, kpargrid = np.meshgrid(resolution_los1, k_parallel, indexing='ij')
             resolution_correction_los1 = compute_resolution_correction(resgrid, kpargrid, delta_v)
             resgrid, kpargrid = np.meshgrid(resolution_los2, k_parallel, indexing='ij')
             resolution_correction_los2 = compute_resolution_correction(resgrid, kpargrid, delta_v)
             resolution_correction_p_cross = resolution_correction_los1 * resolution_correction_los2
+
+        else:
+            resolution_correction_p_cross = np.ones((len(index_los1), len(k_parallel)))
 
         # mean_p_cross computation
         mean_p_cross = np.zeros(Nk)
@@ -335,6 +338,7 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
         - In the case of mocks: The auto power spectrum will be computed in [Angstrom] by default,
         because when we draw LOS to create mocks, wavelength = (1 + refshift) * lambda_lya [Angstrom].
         If another unit is desired, this must be specified in the argument units.
+        PS: In the case of mocks: min_snr_p_cross, max_resolution_cross, and resolution_correction must be set to default !
         - In the case of real data: The auto power spectrum will be first computed unitless,
         because wavelength = LOGLAM, therefore it is mandatory to multiply it my a factor c, and the output will be in [km/s].
     
@@ -389,7 +393,7 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
         reso_mask = np.ones(len(all_los_table), dtype=bool)
 
     delta_los = delta_los[ (snr_mask & reso_mask) ]
-    
+
     # FFT of deltas
     fft_delta = np.fft.rfft(delta_los)
     Nk = fft_delta.shape[1]
@@ -427,10 +431,12 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     if resolution_correction == True:
         delta_v = delta_lambda
         resolution_los = all_los_table['MEANRESOLUTION'][ snr_mask & reso_mask ]
-
         resgrid, kpargrid = np.meshgrid(resolution_los, k_parallel, indexing='ij')
         resolution_correction_los = compute_resolution_correction(resgrid, kpargrid, delta_v)
         resolution_correction_p_auto = resolution_correction_los**2
+
+    else:
+        resolution_correction_p_auto = np.ones((len(delta_los), len(k_parallel)))
                
     # mean_p_auto computation
     mean_p_auto = np.zeros(Nk)
@@ -438,7 +444,7 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     mean_resolution_correction_p_auto = np.zeros(Nk)
     for i in range(Nk):
         mean_p_auto[i] = np.mean(p_auto[:, i])
-        error_p_auto[i] = np.std(p_auto[:, i]) / np.sqrt(len(p_auto) - 1)  # TODO check len(p_auto) = n_los
+        error_p_auto[i] = np.std(p_auto[:, i]) / np.sqrt(len(p_auto) - 1)
         mean_resolution_correction_p_auto[i] = np.mean(resolution_correction_p_auto[:, i])
 
     p_auto_table['k_parallel'][0, :] = k_parallel
@@ -453,7 +459,7 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
 def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type='mocks', 
                                 units='Angstrom', min_snr_p_cross=None, min_snr_p_auto=None,
                                 max_resolution_p_cross=None, max_resolution_p_auto=None, 
-                                resolution_correction=True, reshuffling=False):
+                                resolution_correction=False, reshuffling=False):
     """ - This function computes mean_power_spectrum: 
             - Takes all_los_table and pairs (1 mock)
             - Computes mean_p_auto and mean_p_cross using above functions
