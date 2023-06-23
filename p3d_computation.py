@@ -146,6 +146,9 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
     # mean_ang_separation is always saved in degrees it must be converted to Mpc/h if k_perp is defined in [Mpc/h]^-1
     if units_k_perpendicular == '[Mpc/h]^-1':
         angular_separation_array = np.array(pcross_table['mean_ang_separation']) * deg_to_Mpc * h # [Mpc/h]
+        
+    else:
+        angular_separation_array = np.array(pcross_table['mean_ang_separation']) # [degree]
 
     # reading k_parallel from pcross_table
     k_parallel = np.array(pcross_table['k_parallel'][0])
@@ -169,7 +172,10 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
         ## P3D computation
         for ik_par, k_par in enumerate(k_parallel):  # k_par in [h/Mpc]
             # Reading Pcross from table
-            Pcross = np.array(pcross_table['mean_power_spectrum'][:,ik_par])
+            try:
+                Pcross = np.array(pcross_table['corrected_power_spectrum'][:,ik_par])
+            except:
+                Pcross = np.array(pcross_table['mean_power_spectrum'][:,ik_par])
 
             # Interpolating Pcross
             if method == 'spline interpolation':
@@ -228,7 +234,10 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
         ## P3D computation
         for ik_par, k_par in enumerate(k_parallel):  # k_par in [h/Mpc]
             # Reading Pcross and error_Pcross from table
-            Pcross = np.array(pcross_table['mean_power_spectrum'][:,ik_par])
+            try:
+                Pcross = np.array(pcross_table['corrected_power_spectrum'][:,ik_par])
+            except:
+                Pcross = np.array(pcross_table['mean_power_spectrum'][:,ik_par])
             
             if compute_errors == True:
                 error_Pcross = np.array(pcross_table['error_power_spectrum'][:,ik_par])
@@ -265,7 +274,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
     return p3d_table
 
 
-def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/h', output_units='Mpc/h'
+def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/h', output_units='Mpc/h',
                         method='spline interpolation', smoothing=0, n_angsep=1000, compute_errors=False):
     """ This function computes the P3D out of the Pcross in polar coordinates:
           - It either computes the P3D out of Pcross by direct integration over the angular separation
@@ -350,10 +359,10 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
 
     # Initializing P3D table
     p3d_table = Table()
-    p3d_table['mu'] = np.array(mu)
-    p3d_table['k'] = np.zeros((len(mu), len(k_parallel))) # len of k and k_parallel is the same
-    p3d_table['P3D'] = np.zeros((len(mu), len(k_parallel)))
-    p3d_table['error_P3D'] = np.zeros((len(mu), len(k_parallel)))
+    p3d_table['mu'] = np.array(mu_array)
+    p3d_table['k'] = np.zeros((len(mu_array), len(k_parallel))) # len of k and k_parallel is the same
+    p3d_table['P3D'] = np.zeros((len(mu_array), len(k_parallel)))
+    p3d_table['error_P3D'] = np.zeros((len(mu_array), len(k_parallel)))
 
     # If interpolation method:
     if method != 'no interpolation':
@@ -394,7 +403,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
                 P3D = np.trapz(integrand_Pcross, angular_separation_array_fine_binning)
 
                 # Filling table
-                p3d_table['k_parallel'][i_mu,ik_par] = k_par
+                p3d_table['k'][i_mu,ik_par] = k_par
                 p3d_table['P3D'][i_mu,ik_par] = P3D
 
     else: # if method == 'no interpolation'
@@ -418,7 +427,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
                 P3D = np.trapz(integrand_Pcross, angular_separation_array)
 
                 # Filling table
-                p3d_table['k_parallel'][i_mu,ik_par] = k_par
+                p3d_table['k'][i_mu,ik_par] = k_par
                 p3d_table['P3D'][i_mu,ik_par] = P3D
 
     # converting k_parallel and p3d to desired output units
@@ -430,7 +439,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
         conversion_factor = 1
 
     p3d_table['P3D'] /= conversion_factor**3
-    p3d_table['k_parallel'] *= conversion_factor
+    p3d_table['k'] *= conversion_factor
 
     return p3d_table
 
