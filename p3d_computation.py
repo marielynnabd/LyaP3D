@@ -15,7 +15,8 @@ sys.path.insert(0, os.environ['HOME']+'/Software')
 from LyaP3D.tools import rebin_vector
 
 
-def wavenumber_rebin(power_spectrum_table, rebin_factor):
+# def wavenumber_rebin(p3d_table, rebin_factor):
+def wavenumber_rebin(p3d_table, n_kbins):
     """ This function rebins the 3D power spectrum into k_parallel bins
     
     Arguments:
@@ -23,8 +24,11 @@ def wavenumber_rebin(power_spectrum_table, rebin_factor):
     p3d_table: Table
     Table of P3D
     
-    rebin_factor: Integer
-    Rebin factor
+    # rebin_factor: Integer
+    # Rebin factor
+    
+    n_kbins: Integer
+    Number of k bins we want after rebinning
     
     Return:
     -------
@@ -32,41 +36,44 @@ def wavenumber_rebin(power_spectrum_table, rebin_factor):
     Same table as in input, but with rebinned p3d columns added to the table
     """
     
-    # k_bin_edges = np.logspace(-2, np.log10(np.max(p3d_table['k_parallel'][0])), num=n_kbins) # same units as k_parallel
-    # k_bin_centers = np.around((k_bin_edges[1:] + k_bin_edges[:-1]) / 2, 5) # same units as k_parallel
+    k_bin_edges = np.logspace(-2, np.log10(np.max(p3d_table['k_parallel'][0])), num=n_kbins) # same units as k_parallel
+    k_bin_centers = np.around((k_bin_edges[1:] + k_bin_edges[:-1]) / 2, 5) # same units as k_parallel
 
-    # First rebin k_parallel array
-    k_parallel_rebinned = rebin_vector(p3d_table['k_parallel'][0], pack=2, rebin_opt='mean', verbose=False)
+#     # First rebin k_parallel array
+#     k_parallel_rebinned = rebin_vector(p3d_table['k_parallel'][0], pack=2, rebin_opt='mean', verbose=False)
     
-    p3d_table['k_parallel_rebinned'] = np.zeros((len(p3d_table), len(k_parallel_rebinned)))
-    p3d_table['P3D_rebinned'] = np.zeros((len(p3d_table), len(k_parallel_rebinned)))
-    p3d_table['error_P3D_rebinned'] = np.zeros((len(p3d_table), len(k_parallel_rebinned)))
+    # p3d_table['k_parallel_rebinned'] = np.zeros((len(p3d_table), len(k_parallel_rebinned)))
+    # p3d_table['P3D_rebinned'] = np.zeros((len(p3d_table), len(k_parallel_rebinned)))
+    # p3d_table['error_P3D_rebinned'] = np.zeros((len(p3d_table), len(k_parallel_rebinned)))
+    p3d_table['k_parallel_rebinned'] = np.zeros((len(p3d_table), len(k_bin_centers)))
+    p3d_table['P3D_rebinned'] = np.zeros((len(p3d_table), len(k_bin_centers)))
+    p3d_table['error_P3D_rebinned'] = np.zeros((len(p3d_table), len(k_bin_centers)))
     
-    for j in range(len(p3d_table)):
-
-        P3D_rebinned = rebin_vector(p3d_table['P3D'][j], 
-                                                    pack=2, rebin_opt='mean', verbose=False)
-        error_P3D_rebinned = rebin_vector(p3d_table['error_P3D'][j], 
-                                                    pack=2, rebin_opt='mean', verbose=False) / np.sqrt(rebin_factor)
-        
-        p3d_table['k_parallel_rebinned'][j,:] = k_parallel_rebinned
-        p3d_table['P3D_rebinned'][j,:] = P3D_rebinned 
-        p3d_table['error_P3D_rebinned'][j,:] = error_P3D_rebinned
-
 #     for j in range(len(p3d_table)):
+
+#         P3D_rebinned = rebin_vector(p3d_table['P3D'][j], 
+#                                                     pack=2, rebin_opt='mean', verbose=False)
+#         error_P3D_rebinned = rebin_vector(p3d_table['error_P3D'][j], 
+#                                                     pack=2, rebin_opt='mean', verbose=False) / np.sqrt(rebin_factor)
+        
+#         p3d_table['k_parallel_rebinned'][j,:] = k_parallel_rebinned
+#         p3d_table['P3D_rebinned'][j,:] = P3D_rebinned 
+#         p3d_table['error_P3D_rebinned'][j,:] = error_P3D_rebinned
+
+    for j in range(len(p3d_table)):
     
-#         p3d_table['k_parallel_rebinned'][j,:] = k_bin_centers
+        p3d_table['k_parallel_rebinned'][j,:] = k_bin_centers
 
-#         for ik_bin, k_bin in enumerate(k_bin_edges[:-1]):
+        for ik_bin, k_bin in enumerate(k_bin_edges[:-1]):
 
-#             select_k = (p3d_table['k_parallel'][j] > k_bin_edges[ik_bin]) & (
-#                 p3d_table['k_parallel'][j] <= k_bin_edges[ik_bin+1])
+            select_k = (p3d_table['k_parallel'][j] > k_bin_edges[ik_bin]) & (
+                p3d_table['k_parallel'][j] <= k_bin_edges[ik_bin+1])
 
-#             P3D_rebinned = np.mean(p3d_table['P3D'][j][select_k])
-#             error_P3D_rebinned = np.mean(p3d_table['error_P3D'][j][select_k])
+            P3D_rebinned = np.mean(p3d_table['P3D'][j][select_k])
+            error_P3D_rebinned = np.mean(p3d_table['error_P3D'][j][select_k])
             
-#             p3d_table['P3D_rebinned'][j,ik_bin] = P3D_rebinned 
-#             p3d_table['error_P3D_rebinned'][j,ik_bin] = error_P3D_rebinned
+            p3d_table['P3D_rebinned'][j,ik_bin] = P3D_rebinned 
+            p3d_table['error_P3D_rebinned'][j,ik_bin] = error_P3D_rebinned
 
     return p3d_table
 
@@ -250,15 +257,15 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
                     p3d_table['error_P3D'][ik_perp,ik_par] = error_P3D
                     
     if k_binning == True:
-        # n_kbins = 60
-        # p3d_table = wavenumber_rebin(p3d_table, n_kbins)
-        rebin_factor = 2
-        p3d_table = wavenumber_rebin(p3d_table, rebin_factor)
+        n_kbins = 60
+        p3d_table = wavenumber_rebin(p3d_table, n_kbins)
+        # rebin_factor = 2
+        # p3d_table = wavenumber_rebin(p3d_table, rebin_factor)
 
     return p3d_table
 
 
-def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/h',
+def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/h', output_units='Mpc/h'
                         method='spline interpolation', smoothing=0, n_angsep=1000, compute_errors=False):
     """ This function computes the P3D out of the Pcross in polar coordinates:
           - It either computes the P3D out of Pcross by direct integration over the angular separation
@@ -287,6 +294,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
     In the case of eBOSS, usually the desired output is in [km/s] while for DESI it is in [Angstrom]
     Options: - 'Mpc/h'
              - 'km/s'
+             - 'Angstrom'
 
     method: String, default: 'spline interpolation'
     Pcross interpolation method, before P3D computation
