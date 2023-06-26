@@ -403,7 +403,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
                 P3D = np.trapz(integrand_Pcross, angular_separation_array_fine_binning)
 
                 # Filling table
-                p3d_table['k'][i_mu,ik_par] = k_par
+                p3d_table['k'][i_mu,ik_par] = k
                 p3d_table['P3D'][i_mu,ik_par] = P3D
 
     else: # if method == 'no interpolation'
@@ -427,7 +427,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
                 P3D = np.trapz(integrand_Pcross, angular_separation_array)
 
                 # Filling table
-                p3d_table['k'][i_mu,ik_par] = k_par
+                p3d_table['k'][i_mu,ik_par] = k
                 p3d_table['P3D'][i_mu,ik_par] = P3D
 
     # converting k_parallel and p3d to desired output units
