@@ -13,7 +13,8 @@ SPEED_LIGHT = speed_light / 1000.  # [km/s]
 
 
 def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
-                              include_snr_reso=False, spec_dir=None, with_interpolation=False):
+                              include_snr_reso=False, spec_dir=None, with_interpolation=False,
+                              wavegrid_type='P1D'):
     """ This function returns a table of ra, dec, wavelength and delta for each of the QSOs in qso_cat.
     Wavelenghts are selected in [lambda_min, lambda_max]
 
@@ -50,11 +51,17 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
     
     lambda_lya = 1215.67 # Angstrom
     
-    # This are fixed BOSS parameters: wavelengths should be regularly gridded,
-    # between 3600 and 7235A, in log scale
-    wavelength_ref_min = 3600 # Angstrom
-    wavelength_ref_max = 7235 # Angstrom
-    delta_loglam = 0.0003
+    if wavegrid_type=='DR16-public':
+        #- Wavelength grid for the DR16 BAO analysis
+        wavelength_ref_min = 3600 # Angstrom
+        wavelength_ref_max = 7235 # Angstrom
+        delta_loglam = 0.0003
+    elif wavegrid_type=='P1D':
+        #- P1D-adapted wavelength grid
+        # match parameters from P3D/config_picca_delta_extraction_bossdr16.ini
+        wavelength_ref_min = 3750 # Angstrom
+        wavelength_ref_max = 7200 # Angstrom
+        delta_loglam = 1.e-4
 
     # Reading the THING_ID of each quasar in the catalog
     qso_thing_id = np.array(qso_cat['THING_ID'])
@@ -126,9 +133,14 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
                     n_masked += 1
 
         if (not np.isnan(los_table[i]['ra'])) and include_snr_reso:
-            meansnr, meanreso = get_snr_reso_sdss(qso_cat, delta_ID, spec_dir, wavelength_ref)
-            los_table[i]['MEANSNR'] = meansnr
-            los_table[i]['MEANRESOLUTION'] = meanreso
+            # To get snr&reso: take them from the delta files if available
+            if ('MEANSNR' in delta_i_header) and ('MEANRESO' in delta_i_header):
+                los_table[i]['MEANSNR'] = delta_i_header['MEANSNR']
+                los_table[i]['MEANRESOLUTION'] = delta_i_header['MEANRESO']
+            else:
+                meansnr, meanreso = get_snr_reso_sdss(qso_cat, delta_ID, spec_dir, wavelength_ref)
+                los_table[i]['MEANSNR'] = meansnr
+                los_table[i]['MEANRESOLUTION'] = meanreso
 
     mask_los_used = ~np.isnan(los_table['ra'])
     los_table = los_table[mask_los_used]
@@ -202,6 +214,8 @@ def get_los_table_dr16(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all',
 def get_snr_reso_sdss(qso_cat, thing_id, spec_dir, wavelength_ref):
     # Function used in get_qso_deltas_singlefile
     #  inspired from picca/py/picca/delta_extraction/data_catalogues/sdss_data.py
+    # !This is needed only if deltas were taken from a "BAO-like" catalog
+    # (picca's deltas with P1D option already have mean snr and resolution)
 
     w, = np.where(np.isin(qso_cat['THING_ID'], thing_id))
     if len(w)!=1: print("Warning THING_ID")  # should not happen in principle
