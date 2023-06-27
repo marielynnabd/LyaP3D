@@ -143,7 +143,8 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     
     # Centers of angular separation bins
     ang_sep_bin_centers = np.around((ang_sep_bin_edges[1:] + ang_sep_bin_edges[:-1]) / 2, 5)
-    
+    n_ang_sep_bins = len(ang_sep_bin_centers)
+
     print('Pcross computation')
     
     # Parameters definitions
@@ -191,13 +192,14 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     # Initializing p_cross_table
     p_cross_table = Table()
     p_cross_table['ang_sep_bin_centers'] = np.array(ang_sep_bin_centers)
-    p_cross_table['mean_ang_separation'] = np.zeros(len(ang_sep_bin_centers))
-    p_cross_table['N'] = np.zeros(len(ang_sep_bin_centers))
-    p_cross_table['k_parallel'] = np.zeros((len(ang_sep_bin_centers), Nk))
-    p_cross_table['mean_power_spectrum'] = np.zeros((len(ang_sep_bin_centers), Nk))
-    p_cross_table['error_power_spectrum'] = np.zeros((len(ang_sep_bin_centers), Nk))
-    p_cross_table['resolution_correction'] = np.zeros((len(ang_sep_bin_centers), Nk))
-    p_cross_table['corrected_power_spectrum'] = np.zeros((len(ang_sep_bin_centers), Nk))
+    p_cross_table['mean_ang_separation'] = np.zeros(n_ang_sep_bins)
+    p_cross_table['N'] = np.zeros(n_ang_sep_bins)
+    p_cross_table['k_parallel'] = np.zeros((n_ang_sep_bins, Nk))
+    p_cross_table['mean_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
+    p_cross_table['error_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
+    p_cross_table['covmat_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk, Nk))
+    p_cross_table['resolution_correction'] = np.zeros((n_ang_sep_bins, Nk))
+    p_cross_table['corrected_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
 
     # p_cross computation
     for i_ang_sep, ang_sep in enumerate(ang_sep_bin_edges[:-1]):
@@ -251,16 +253,25 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
         mean_p_cross = np.zeros(Nk)
         mean_resolution_correction_p_cross = np.zeros(Nk)
         error_p_cross = np.zeros(Nk)
+        covmat_p_cross = np.zeros((Nk, Nk))
         corrected_p_cross = np.zeros(Nk)
+
         for i in range(Nk):
             mean_p_cross[i] = np.mean(p_cross.real[:,i])
             error_p_cross[i] = np.std(p_cross.real[:,i]) / np.sqrt(N_pairs - 1)
             mean_resolution_correction_p_cross[i] = np.mean(resolution_correction_p_cross[:,i])
             corrected_p_cross[i] = mean_p_cross[i] / mean_resolution_correction_p_cross[i]
+        #- covariance matrix:
+        for i in range(Nk):
+            fluct_i = p_cross.real[:,i]-mean_p_cross[i]
+            for j in range(Nk):
+                fluct_j = p_cross.real[:,j]-mean_p_cross[j]
+                covmat_p_cross[i,j] = np.mean(fluct_i*fluct_j) / (N_pairs - 1)
 
         p_cross_table['k_parallel'][i_ang_sep, :] = k_parallel
         p_cross_table['mean_power_spectrum'][i_ang_sep, :] = mean_p_cross  
         p_cross_table['error_power_spectrum'][i_ang_sep, :] = error_p_cross
+        p_cross_table['covmat_power_spectrum'][i_ang_sep, :, :] = covmat_p_cross
         p_cross_table['resolution_correction'][i_ang_sep, :] = mean_resolution_correction_p_cross
         p_cross_table['corrected_power_spectrum'][i_ang_sep, :] = corrected_p_cross
         
@@ -346,6 +357,7 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
         reso_mask = np.ones(len(all_los_table), dtype=bool)
 
     delta_los = delta_los[ (snr_mask & reso_mask) ]
+    Nlos = len(delta_los)
 
     # FFT of deltas
     fft_delta = np.fft.rfft(delta_los)
@@ -360,6 +372,7 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     p_auto_table['k_parallel'] = np.zeros((1, Nk))
     p_auto_table['mean_power_spectrum'] = np.zeros((1, Nk))
     p_auto_table['error_power_spectrum'] = np.zeros((1, Nk))
+    p_auto_table['covmat_power_spectrum'] = np.zeros((1, Nk, Nk))
     p_auto_table['resolution_correction'] = np.zeros((1, Nk))
     p_auto_table['corrected_power_spectrum'] = np.zeros((1, Nk))
     
@@ -391,22 +404,30 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
         resolution_correction_p_auto = resolution_correction_los**2
 
     else:
-        resolution_correction_p_auto = np.ones((len(delta_los), len(k_parallel)))
+        resolution_correction_p_auto = np.ones((Nlos, len(k_parallel)))
                
     # mean_p_auto computation
     mean_p_auto = np.zeros(Nk)
     error_p_auto = np.zeros(Nk)
+    covmat_p_auto = np.zeros((Nk, Nk))
     mean_resolution_correction_p_auto = np.zeros(Nk)
     corrected_p_auto = np.zeros(Nk)
     for i in range(Nk):
         mean_p_auto[i] = np.mean(p_auto[:, i])
-        error_p_auto[i] = np.std(p_auto[:, i]) / np.sqrt(len(p_auto) - 1)
+        error_p_auto[i] = np.std(p_auto[:, i]) / np.sqrt(Nlos - 1)
         mean_resolution_correction_p_auto[i] = np.mean(resolution_correction_p_auto[:, i])
         corrected_p_auto[i] = (mean_p_auto[i] - p_noise) / mean_resolution_correction_p_auto[i]
+    #- covariance matrix:
+    for i in range(Nk):
+        fluct_i = p_auto.real[:,i]-mean_p_auto[i]
+        for j in range(Nk):
+            fluct_j = p_auto.real[:,j]-mean_p_auto[j]
+            covmat_p_auto[i,j] = np.mean(fluct_i*fluct_j) / (Nlos - 1)
 
     p_auto_table['k_parallel'][0, :] = k_parallel
     p_auto_table['mean_power_spectrum'][0, :] = mean_p_auto  
     p_auto_table['error_power_spectrum'][0, :] = error_p_auto
+    p_auto_table['covmat_power_spectrum'][0, :, :] = covmat_p_auto
     p_auto_table['resolution_correction'][0, :] = mean_resolution_correction_p_auto
     p_auto_table['corrected_power_spectrum'][0, :] = corrected_p_auto
     p_auto_table['N'][0] = len(p_auto)
