@@ -638,7 +638,7 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, rebin_factor, 
 
         with Pool(ncpu) as pool:
             output_get_possible_pairs = pool.starmap(
-                get_possible_pairs, [[i, all_los_table, los_number, ang_sep_max, radec_names] for i in range(los_number)])
+                get_possible_pairs, [[i, all_los_table, ang_sep_max, radec_names] for i in range(los_number)])
         output_get_possible_pairs = [x for x in output_get_possible_pairs if x is not None] # For sanity check
         los_pairs_table = vstack([output_get_possible_pairs[i] for i in range(len(output_get_possible_pairs))])
 
@@ -672,56 +672,71 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, rebin_factor, 
         # Stacking power spectra of all mocks in one table
         all_mocks_mean_power_spectrum = vstack([all_mocks_mean_power_spectrum, mock_mean_power_spectrum])  
         
-    # Mean over all mocks
-    N_mocks = len(files)
-    if N_mocks == 1:
-        print('Averaging on '+str(N_mocks)+' mock')
-    else:
-        print('Averaging on '+str(N_mocks)+' mocks')
-
-    N_ang_sep_bins = int(len(all_mocks_mean_power_spectrum) / N_mocks)
-    k_parallel = all_mocks_mean_power_spectrum['k_parallel'][0] 
-    N_k_bins = len(k_parallel)
-    ang_sep_bin_centers = np.array(all_mocks_mean_power_spectrum['ang_sep_bin_centers'][:N_ang_sep_bins])
-    
-    ### Initializing table
-    final_power_spectrum = Table()
-    final_power_spectrum['ang_sep_bin_centers'] = ang_sep_bin_centers
-    final_power_spectrum['mean_ang_separation'] = np.zeros(len(ang_sep_bin_centers))
-    final_power_spectrum['N'] = np.zeros(len(ang_sep_bin_centers))
-    final_power_spectrum['k_parallel'] = np.zeros((len(ang_sep_bin_centers), N_k_bins))
-    final_power_spectrum['mean_power_spectrum'] = np.zeros((len(ang_sep_bin_centers), N_k_bins))
-    final_power_spectrum['error_power_spectrum'] = np.zeros((len(ang_sep_bin_centers), N_k_bins))
-    
-    ### Averaging
-    for i_ang_sep, ang_sep in enumerate(ang_sep_bin_centers): 
-    
-        select = (all_mocks_mean_power_spectrum['ang_sep_bin_centers'] == ang_sep)
-
-        N = np.sum(all_mocks_mean_power_spectrum['N'][select])
-        final_power_spectrum['N'][i_ang_sep] = N
-
-        mean_ang_separation = np.mean(all_mocks_mean_power_spectrum['mean_ang_separation'][select])
-        final_power_spectrum['mean_ang_separation'][i_ang_sep] = mean_ang_separation
-
-        mean = np.zeros(N_k_bins)
-        error = np.zeros(N_k_bins)
-
-        for i in range(N_k_bins):
-            if N_mocks>1:
-                mean[i] = np.mean(all_mocks_mean_power_spectrum['mean_power_spectrum'][select][:, i])
-                error[i] = np.mean(all_mocks_mean_power_spectrum['error_power_spectrum'][select][:,i]) / np.sqrt(N_mocks - 1)
-            else:
-                mean[i] = all_mocks_mean_power_spectrum['mean_power_spectrum'][select][:, i]
-                error[i] = all_mocks_mean_power_spectrum['error_power_spectrum'][select][:,i]
-
-        final_power_spectrum['k_parallel'][i_ang_sep, :] = k_parallel
-        final_power_spectrum['mean_power_spectrum'][i_ang_sep, :] = mean 
-        final_power_spectrum['error_power_spectrum'][i_ang_sep, :] = error
-        
     if k_binning:
         print('Wavenumber rebinning')
-        final_power_spectrum = wavenumber_rebin(power_spectrum_table=final_power_spectrum, rebin_factor=rebin_factor)
+        all_mocks_mean_power_spectrum = wavenumber_rebin(power_spectrum_table=all_mocks_mean_power_spectrum, 
+                                                         rebin_factor=rebin_factor)
         
-    return final_power_spectrum
+    return all_mocks_mean_power_spectrum
+
+# Commented because we don't do the analysis on many mock realizations right now
+#     # Mean over all mocks
+#     N_mocks = len(files)
+#     if N_mocks == 1:
+#         print('Averaging on '+str(N_mocks)+' mock')
+#     else:
+#         print('Averaging on '+str(N_mocks)+' mocks')
+
+#     N_ang_sep_bins = int(len(all_mocks_mean_power_spectrum) / N_mocks)
+#     k_parallel = all_mocks_mean_power_spectrum['k_parallel'][0] 
+#     N_k_bins = len(k_parallel)
+#     ang_sep_bin_centers = np.array(all_mocks_mean_power_spectrum['ang_sep_bin_centers'][:N_ang_sep_bins])
+    
+#     ### Initializing table
+#     final_power_spectrum = Table()
+#     final_power_spectrum['ang_sep_bin_centers'] = ang_sep_bin_centers
+#     final_power_spectrum['mean_ang_separation'] = np.zeros(len(ang_sep_bin_centers))
+#     final_power_spectrum['N'] = np.zeros(len(ang_sep_bin_centers))
+#     final_power_spectrum['k_parallel'] = np.zeros((len(ang_sep_bin_centers), N_k_bins))
+#     final_power_spectrum['mean_power_spectrum'] = np.zeros((len(ang_sep_bin_centers), N_k_bins))
+#     final_power_spectrum['error_power_spectrum'] = np.zeros((len(ang_sep_bin_centers), N_k_bins))
+#     final_power_spectrum['covmat_power_spectrum'] = np.zeros((1, N_k_bins, N_k_bins))
+#     final_power_spectrum['resolution_correction'] = np.zeros((len(ang_sep_bin_centers), N_k_bins))
+#     final_power_spectrum['corrected_power_spectrum'] = np.zeros((len(ang_sep_bin_centers), N_k_bins))
+    
+#     ### Averaging
+#     for i_ang_sep, ang_sep in enumerate(ang_sep_bin_centers): 
+    
+#         select = (all_mocks_mean_power_spectrum['ang_sep_bin_centers'] == ang_sep)
+
+#         N = np.sum(all_mocks_mean_power_spectrum['N'][select])
+#         final_power_spectrum['N'][i_ang_sep] = N
+
+#         mean_ang_separation = np.mean(all_mocks_mean_power_spectrum['mean_ang_separation'][select])
+#         final_power_spectrum['mean_ang_separation'][i_ang_sep] = mean_ang_separation
+
+#         mean = np.zeros(N_k_bins)
+#         error = np.zeros(N_k_bins)
+
+#         for i in range(N_k_bins):
+#             if N_mocks>1:
+#                 mean[i] = np.mean(all_mocks_mean_power_spectrum['mean_power_spectrum'][select][:, i])
+#                 error[i] = np.mean(all_mocks_mean_power_spectrum['error_power_spectrum'][select][:,i]) / np.sqrt(N_mocks - 1)
+#             else:
+#                 mean[i] = all_mocks_mean_power_spectrum['mean_power_spectrum'][select][:, i]
+#                 error[i] = all_mocks_mean_power_spectrum['error_power_spectrum'][select][:,i]
+                
+
+#         final_power_spectrum['k_parallel'][i_ang_sep, :] = k_parallel
+#         final_power_spectrum['mean_power_spectrum'][i_ang_sep, :] = mean 
+#         final_power_spectrum['error_power_spectrum'][i_ang_sep, :] = error
+#         final_power_spectrum['covmat_power_spectrum'][i_ang_sep, :, :] = 
+#         final_power_spectrum['resolution_correction'][i_ang_sep, :] = 
+#         final_power_spectrum['corrected_power_spectrum'][i_ang_sep, :] = 
+        
+#     if k_binning:
+#         print('Wavenumber rebinning')
+#         final_power_spectrum = wavenumber_rebin(power_spectrum_table=final_power_spectrum, rebin_factor=rebin_factor)
+        
+    # return final_power_spectrum
 
