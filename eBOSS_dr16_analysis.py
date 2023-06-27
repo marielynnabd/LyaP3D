@@ -8,8 +8,8 @@ import fitsio
 from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
-from scipy.constants import speed_of_light as speed_light
-SPEED_LIGHT = speed_light / 1000.  # [km/s]
+
+from tools import SPEED_LIGHT
 
 
 def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
@@ -273,3 +273,28 @@ def _spectral_resolution(wdisp, fiberid, log_lambda):
     reso *= correction
 
     return reso
+
+
+def boss_resolution_correction(resolution, k_parallel, delta_v):
+    """ This function computes the resolution correction for one LOS
+    (adapted to BOSS only)
+
+    Arguments:
+    ----------
+    resolution: Float
+    Mean resolution of LOS.
+
+    k_parallel: Array
+    Array of parallel wavenumber.
+
+    delta_v: Float
+    c x (ln_lambda_1 - ln_lambda_2).
+
+    Return:
+    -------
+    resolution_correction: Float
+    """
+
+    resolution_correction = np.exp(-1/2 * (k_parallel * resolution)**2) * np.sinc(k_parallel * delta_v / 2 / np.pi)
+
+    return resolution_correction

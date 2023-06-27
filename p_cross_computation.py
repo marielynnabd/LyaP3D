@@ -8,12 +8,10 @@ import sys, os
 import glob
 from astropy.table import Table, vstack
 from multiprocessing import Pool
-
-
-sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
-from LyaP3D.tools import rebin_vector, SPEED_LIGHT, LAMBDA_LYA
-
 from astropy.cosmology import FlatLambdaCDM
+
+from tools import rebin_vector, SPEED_LIGHT, LAMBDA_LYA
+from eBOSS_dr16_analysis import boss_resolution_correction
 
 
 def get_possible_pairs(i_los, all_los_table, ang_sep_max, radec_names=['ra', 'dec']):
@@ -86,30 +84,6 @@ def get_possible_pairs(i_los, all_los_table, ang_sep_max, radec_names=['ra', 'de
     los_pairs_table['ang_separation'] = ang_sep_local
     
     return los_pairs_table
-
-
-def compute_resolution_correction(resolution, k_parallel, delta_v):
-    """ This function computes the resolution correction for one LOS
-    
-    Arguments:
-    ----------
-    resolution: Float
-    Mean resolution of LOS.
-    
-    k_parallel: Array
-    Array of parallel wavenumber.
-    
-    delta_v: Float
-    c x (ln_lambda_1 - ln_lambda_2).
-    
-    Return:
-    -------
-    resolution_correction: Float
-    """
-
-    resolution_correction = np.exp(-1/2 * (k_parallel * resolution)**2) * np.sinc(k_parallel * delta_v / 2 / np.pi)
-
-    return resolution_correction
 
 
 def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_snr_p_cross=None, max_resolution_p_cross=None,
@@ -265,9 +239,9 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
             resolution_los1 = all_los_table['MEANRESOLUTION'][index_los1]
             resolution_los2 = all_los_table['MEANRESOLUTION'][index_los2]
             resgrid, kpargrid = np.meshgrid(resolution_los1, k_parallel, indexing='ij')
-            resolution_correction_los1 = compute_resolution_correction(resgrid, kpargrid, delta_v)
+            resolution_correction_los1 = boss_resolution_correction(resgrid, kpargrid, delta_v)
             resgrid, kpargrid = np.meshgrid(resolution_los2, k_parallel, indexing='ij')
-            resolution_correction_los2 = compute_resolution_correction(resgrid, kpargrid, delta_v)
+            resolution_correction_los2 = boss_resolution_correction(resgrid, kpargrid, delta_v)
             resolution_correction_p_cross = resolution_correction_los1 * resolution_correction_los2
 
         else:
@@ -413,7 +387,7 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
         delta_v = delta_lambda
         resolution_los = all_los_table['MEANRESOLUTION'][ snr_mask & reso_mask ]
         resgrid, kpargrid = np.meshgrid(resolution_los, k_parallel, indexing='ij')
-        resolution_correction_los = compute_resolution_correction(resgrid, kpargrid, delta_v)
+        resolution_correction_los = boss_resolution_correction(resgrid, kpargrid, delta_v)
         resolution_correction_p_auto = resolution_correction_los**2
 
     else:
