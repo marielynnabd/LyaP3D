@@ -214,7 +214,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
         snr_mask = (snr_los1 > min_snr_p_cross) & (snr_los2 > min_snr_p_cross)
         
     else:
-        snr_mask = np.ones(len(all_los_table), dtype=bool)
+        snr_mask = np.ones(len(los_pairs_table), dtype=bool)
 
     # Applying resolution mask    
     if max_resolution_p_cross is not None:
@@ -583,8 +583,10 @@ def wavenumber_rebin(power_spectrum_table, rebin_factor):
     return power_spectrum_table
 
 
-def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, 
-                                    minimum_snr_p_cross=None, minimum_snr_p_auto=None, 
+def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, rebin_factor, p_noise=0,
+                                    min_snr_p_cross=None, min_snr_p_auto=None,
+                                    max_resolution_p_cross=None, max_resolution_p_auto=None, 
+                                    resolution_correction=False, reshuffling=False,
                                     k_binning=False, data_type='mocks', units='Angstrom', 
                                     radec_names=['ra', 'dec']): 
     """ - This function computes all_mocks_mean_power_spectrum:
@@ -606,7 +608,7 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins,
     n_kbins: Integer
     Number of wavenumber bins if k_binning
     
-    minimum_snr_p_cross, minimum_snr_p_auto: Floats, Defaults are None
+    min_snr_p_cross, min_snr_p_auto: Floats, Defaults are None
     The values of minimum snr required for both p_cross and p_auto computation.
     
     k_binning: Boolean, Default to False
@@ -660,7 +662,7 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins,
     for i_f, f in enumerate(files):
     
         # Reading mock (file)
-        print('Reading file test'+str(i_f+1)+'.fits.gz')
+        print('Reading file test'+str(f))
         all_los_table = Table.read(f)
 
         # Defining parameters used for next step
@@ -686,13 +688,25 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins,
         # Computing the mean_p_cross for each mock
         # print('Computing mean power spectrum in ', units)
         print('Computing mean power spectrum in input units')
-        mock_mean_power_spectrum = compute_mean_power_spectrum(all_los_table=all_los_table, 
-                                                               los_pairs_table=los_pairs_table, 
-                                                               ang_sep_bin_edges=ang_sep_bin_edges, 
-                                                               data_type=data_type, units=units,
-                                                               minimum_snr_p_cross=minimum_snr_p_cross, 
-                                                               minimum_snr_p_auto=minimum_snr_p_auto)
+        # mock_mean_power_spectrum = compute_mean_power_spectrum(all_los_table=all_los_table, 
+        #                                                        los_pairs_table=los_pairs_table, 
+        #                                                        ang_sep_bin_edges=ang_sep_bin_edges, 
+        #                                                        data_type=data_type, units=units,
+        #                                                        min_snr_p_cross=min_snr_p_cross, 
+        #                                                        min_snr_p_auto=min_snr_p_auto)
         
+        mock_mean_power_spectrum = compute_mean_power_spectrum(all_los_table=all_los_table, 
+                                                               los_pairs_table=los_pairs_table,
+                                                               ang_sep_bin_edges=ang_sep_bin_edges,
+                                                               data_type=data_type, units=units, 
+                                                               p_noise=p_noise, 
+                                                               min_snr_p_cross=min_snr_p_cross, 
+                                                               min_snr_p_auto=min_snr_p_auto,
+                                                               max_resolution_p_cross=max_resolution_p_cross,
+                                                               max_resolution_p_auto=max_resolution_p_auto, 
+                                                               resolution_correction=resolution_correction, 
+                                                               reshuffling=reshuffling)
+
         # Stacking power spectra of all mocks in one table
         all_mocks_mean_power_spectrum = vstack([all_mocks_mean_power_spectrum, mock_mean_power_spectrum])  
         
@@ -745,7 +759,7 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins,
         
     if k_binning:
         print('Wavenumber rebinning')
-        final_power_spectrum = wavenumber_rebin(power_spectrum_table=final_power_spectrum, n_kbins=n_kbins)
+        final_power_spectrum = wavenumber_rebin(power_spectrum_table=final_power_spectrum, rebin_factor=rebin_factor)
         
     return final_power_spectrum
 
