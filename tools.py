@@ -3,6 +3,10 @@
 
 import numpy as np
 from astropy.table import Table, vstack
+import astropy.constants
+
+SPEED_LIGHT = astropy.constants.c.to('km/s').value  # km/s
+LAMBDA_LYA = 1215.67  # Angstrom
 
 
 def rebin_vector(arr, pack=2, rebin_opt='mean', verbose=True):

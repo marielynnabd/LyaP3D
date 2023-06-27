@@ -9,28 +9,11 @@ import glob
 from astropy.table import Table, vstack
 from multiprocessing import Pool
 
-sys.path.insert(0, os.environ['HOME']+'/Software/picca/py')
-from picca import constants
-from picca.constants import SPEED_LIGHT # in km/s
 
-sys.path.insert(0, os.environ['HOME']+'/Software')
-from LyaP3D.tools import rebin_vector
+sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
+from LyaP3D.tools import rebin_vector, SPEED_LIGHT, LAMBDA_LYA
 
-lambda_lya = 1215.67 # Angstrom
-
-# Computing cosmo used for Conversions
-Omega_m=0.3153
-Omega_k=0.
-h = 0.7
-Cosmo = constants.Cosmo(Omega_m, Omega_k, H0=100*h)
-rcomov = Cosmo.get_r_comov
-distang = Cosmo.get_dist_m
-hubble = Cosmo.get_hubble
-    
-# Conversion from degree to Mpc
-z = 2.59999
-# z = 2.5
-deg_to_Mpc = distang(z) * np.pi / 180
+from astropy.cosmology import FlatLambdaCDM
 
 
 def get_possible_pairs(i_los, all_los_table, los_number, ang_sep_max, radec_names=['ra', 'dec']):
@@ -82,6 +65,14 @@ def get_possible_pairs(i_los, all_los_table, los_number, ang_sep_max, radec_name
 
     # Selecting a radius of 1 degree around the pixel (First selection)
     radius_degree = 1
+    # Conversion from degree to Mpc
+    ## TODO: cosmo/z should be args
+    Omega_m = 0.3153
+    h = 0.7
+    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
+    z = 2.59999
+    deg_to_Mpc = cosmo.comoving_distance(z).value * np.pi / 180
+
     if radec_names == ['x', 'y']:
         radius_Mpc = radius_degree * deg_to_Mpc * h
         mask1 = (dalpha < radius_Mpc) & (ddelta < radius_Mpc) 
@@ -177,18 +168,13 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     p_cross_table: Table
     Each row corresponds to the p_cross in one angular separation bin
     """
-    
-    lambda_lya = 1215.67 # Angstrom
-    z = 2.59999
-    
+
+    ## TODO: cosmo/z should be args
     # Computing cosmo used for conversions
     Omega_m = 0.3153
-    Omega_k = 0.
     h = 0.7
-    Cosmo = constants.Cosmo(Omega_m, Omega_k, H0=100*h)
-    rcomov = Cosmo.get_r_comov
-    distang = Cosmo.get_dist_m
-    hubble = Cosmo.get_hubble
+    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
+    z = 2.59999
     
     # Centers of angular separation bins
     ang_sep_bin_centers = np.around((ang_sep_bin_edges[1:] + ang_sep_bin_edges[:-1]) / 2, 5)
@@ -271,12 +257,12 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
         if data_type == 'mocks':
             # If the output unit desired is not Angstrom
             if units == 'km/s':
-                conversion_factor = (1 + z) * lambda_lya / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
+                conversion_factor = (1 + z) * LAMBDA_LYA / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
                 p_cross /= conversion_factor # km/s
                 k_parallel *= conversion_factor # k_parallel in [km/s]^-1
 
             elif units == 'Mpc/h':
-                conversion_factor = (hubble(z) * lambda_lya) / SPEED_LIGHT 
+                conversion_factor = cosmo.H(z).value * LAMBDA_LYA / SPEED_LIGHT
                 p_cross /= conversion_factor # Mpc
                 k_parallel *= conversion_factor # Mpc^-1
                 p_cross *= h # [Mpc/h]
@@ -358,17 +344,12 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     One row table corresponding to average p_auto computed in ang_sep_bin = 0
     """
     
-    lambda_lya = 1215.67 # Angstrom
-    z = 2.59999
-    
+    ## TODO: cosmo/z should be args
     # Computing cosmo used for conversions
     Omega_m = 0.3153
-    Omega_k = 0.
     h = 0.7
-    Cosmo = constants.Cosmo(Omega_m, Omega_k, H0=100*h)
-    rcomov = Cosmo.get_r_comov
-    distang = Cosmo.get_dist_m
-    hubble = Cosmo.get_hubble
+    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
+    z = 2.59999
 
     print('P_auto computation')
     
@@ -424,16 +405,17 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     if data_type == 'mocks':
     
         if units == 'km/s':
-                conversion_factor = (1 + z) * lambda_lya / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
-                p_auto /= conversion_factor # km/s
-                k_parallel *= conversion_factor # k_parallel in [km/s]^-1
+            conversion_factor = (1 + z) * LAMBDA_LYA / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
+            p_auto /= conversion_factor # km/s
+            k_parallel *= conversion_factor # k_parallel in [km/s]^-1
 
         elif units == 'Mpc/h':
-                conversion_factor = (hubble(z) * lambda_lya) / SPEED_LIGHT # from Angstrom^-1 to Mpc^-1
-                p_auto /= conversion_factor # Mpc
-                k_parallel *= conversion_factor # Mpc^-1
-                p_auto *= h # [Mpc/h]
-                k_parallel /= h # [Mpc/h]^-1
+            # from Angstrom^-1 to Mpc^-1:
+            conversion_factor = cosmo.H(z).value * LAMBDA_LYA / SPEED_LIGHT
+            p_auto /= conversion_factor # Mpc
+            k_parallel *= conversion_factor # Mpc^-1
+            p_auto *= h # [Mpc/h]
+            k_parallel /= h # [Mpc/h]^-1
 
     # resolution correction computation
     if resolution_correction == True:
@@ -636,19 +618,13 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins,
     Each row corresponds to the computed mean power spectrum over all mocks in one angular spearation bin
     """
     
-    z = 2.59999
-    
-    # Computing cosmo used for Conversions
-    Omega_m = 0.3153
-    Omega_k = 0.
-    h = 0.7
-    Cosmo = constants.Cosmo(Omega_m, Omega_k, H0=100*h)
-    rcomov = Cosmo.get_r_comov
-    distang = Cosmo.get_dist_m
-    hubble = Cosmo.get_hubble
-    
     # Conversion from degree to Mpc
-    deg_to_Mpc = distang(z) * np.pi / 180
+    ## TODO: cosmo/z should be args
+    Omega_m = 0.3153
+    h = 0.7
+    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
+    z = 2.59999
+    deg_to_Mpc = cosmo.comoving_distance(z).value * np.pi / 180
 
     # Loading mocks files
     searchstr = '*'
