@@ -6,13 +6,10 @@ import copy
 from astropy.table import Table
 import fitsio
 import scipy
+from astropy.cosmology import FlatLambdaCDM
 
-sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
 from truth_p3d_computation import init_p_linear, p3d_truth_polar
-
-sys.path.insert(0, os.environ['HOME']+'/Software/picca/py')
-from picca import constants
-from picca.constants import SPEED_LIGHT # in km/s
+from tools import SPEED_LIGHT, LAMBDA_LYA
 
 
 def generate_box(Nx, Ny, Nz, pixel_size, model='model1'):
@@ -107,9 +104,7 @@ def draw_los(grf_box, los_number, pixel_size, z_box=2.6):
     all_los_table: Table, one column per LOS
     Table of GRF drawn along randomlxy chosen axes
     """
-    
-    lambda_lya = 1215.67 # Angstrom
-    
+
     # Arrays of x, y and z coordinates
     Nx = len(grf_box[0])
     Ny = len(grf_box[1])
@@ -117,15 +112,12 @@ def draw_los(grf_box, los_number, pixel_size, z_box=2.6):
     Nx_array = np.arange(0,Nx,1)
     Ny_array = np.arange(0,Ny,1)
     Nz_array = np.arange(0,Nz,1)
-    
+
+    ## TODO: cosmo pars should be args
     # Computing cosmo used for cartesian to sky coordinates conversion
     Omega_m = 0.3153
-    Omega_k = 0.
-    h = 0.7 # H0/100
-    Cosmo = constants.Cosmo(Omega_m, Omega_k, H0=100*h)
-    rcomov = Cosmo.get_r_comov
-    distang = Cosmo.get_dist_m
-    hubble = Cosmo.get_hubble
+    h = 0.7
+    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
 
     # Initializing table
     couples_list = []
@@ -161,14 +153,14 @@ def draw_los(grf_box, los_number, pixel_size, z_box=2.6):
             delta_los = interp_function_delta(point_positions) 
             
             # Conversion factor from Mpc to degree
-            deg_to_Mpc = distang(z_box) * np.pi / 180 # zbin = 2.5
+            deg_to_Mpc = cosmo.comoving_distance(z_box).value * np.pi / 180
             
             x_coord = X * pixel_size
             y_coord = Y * pixel_size
             
             ra = (X * pixel_size) / (deg_to_Mpc * h)
             dec = (Y * pixel_size) / (deg_to_Mpc * h)
-            z = z_box + (hubble(z_box) * (Nz_array * pixel_size / h) / (SPEED_LIGHT)) # there must be a  / factor 0.7 
+            z = z_box + (cosmo.H(z).value * (Nz_array * pixel_size / h) / (SPEED_LIGHT)) # there must be a  / factor 0.7
             
             all_los_table['ra'][j] = ra # degree
             all_los_table['dec'][j] = dec # degree
@@ -178,7 +170,7 @@ def draw_los(grf_box, los_number, pixel_size, z_box=2.6):
             all_los_table['z'][j,:] = Nz_array * pixel_size # Mpc/h
             all_los_table['delta_los'][j,:] = delta_los
             # all_los_table['wavelength [Angstrom]'][j,:] = (1 + z) * lambda_lya
-            all_los_table['wavelength'][j,:] = (1 + z) * lambda_lya
+            all_los_table['wavelength'][j,:] = (1 + z) * LAMBDA_LYA
             
             couples_list.append(couple)     
             j += 1
