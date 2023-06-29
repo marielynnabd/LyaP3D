@@ -85,7 +85,7 @@ def generate_box(Nx, Ny, Nz, pixel_size, model='model1'):
     return grf_box
 
 
-def draw_los(grf_box, los_number, pixel_size, z_box=2.6):
+def draw_los(grf_box, los_number, pixel_size, z_box=2.6, noise=0):
     """ Draw LOS from a box of GRF in real space and converts their cartesian coordinates to sky coordinates (ra,dec) in degree
     
     Arguments:
@@ -99,6 +99,9 @@ def draw_los(grf_box, los_number, pixel_size, z_box=2.6):
     pixel_size: float
     Cell's size in [Mpc/h]
     
+    noise: float
+    Add white gaussian fluctuations to the deltas: noise = sigma(delta_los) per Angstrom
+
     Return:
     -------
     all_los_table: Table, one column per LOS
@@ -124,13 +127,12 @@ def draw_los(grf_box, los_number, pixel_size, z_box=2.6):
     all_los_table = Table()
     all_los_table['ra'] = np.zeros(los_number)
     all_los_table['dec'] = np.zeros(los_number)
-    all_los_table['redshift'] = np.zeros((los_number, Nx))
+    all_los_table['redshift'] = np.zeros((los_number, Nz))
     all_los_table['x'] = np.zeros(los_number)
     all_los_table['y'] = np.zeros(los_number)
-    all_los_table['z'] = np.zeros((los_number, Nx))
-    all_los_table['delta_los'] = np.zeros((los_number, Nx))
-    # all_los_table['wavelength [Angstrom]'] = np.zeros((los_number, Nx))
-    all_los_table['wavelength'] = np.zeros((los_number, Nx))
+    all_los_table['z'] = np.zeros((los_number, Nz))
+    all_los_table['delta_los'] = np.zeros((los_number, Nz))
+    all_los_table['wavelength'] = np.zeros((los_number, Nz))
     
     # Choosing random float values of x and y, interpolating on grid and drawing LOS[x, y, :]
     
@@ -177,7 +179,12 @@ def draw_los(grf_box, los_number, pixel_size, z_box=2.6):
             
         else:
             print('couple already exists')
-            
+
+        if noise>0:
+            pixel_size_angstrom = (h * pixel_size) * LAMBDA_LYA * cosmo.H(z).value / SPEED_LIGHT
+            noise_per_pixel = noise * np.sqrt(1/pixel_size_angstrom)  # sigma(delta_F) ~ 1/sqrt(pixel size)
+            all_los_table['delta_los'] += np.random.normal(scale=noise_per_pixel, size=(los_number, Nz))
+
     return all_los_table
 
 
