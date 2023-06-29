@@ -27,3 +27,9 @@ def rebin_vector(arr, pack=2, rebin_opt='mean', verbose=True):
         i+=pack
     return np.asarray(v)
 
+
+def cov_to_corrmat(covmatrix):
+    sigmas = np.sqrt(np.diag(np.diag(covmatrix)))
+    gaid = np.linalg.inv(sigmas)
+    return gaid @ covmatrix @ gaid
+
