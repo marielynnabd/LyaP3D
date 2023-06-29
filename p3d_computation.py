@@ -6,13 +6,9 @@ import astropy.io.fits
 from astropy.table import Table
 import scipy
 import matplotlib.pyplot as plt
+from astropy.cosmology import FlatLambdaCDM
 
-sys.path.insert(0, os.environ['HOME']+'/Software/picca/py')
-from picca import constants
-from picca.constants import SPEED_LIGHT # in km/s
-
-sys.path.insert(0, os.environ['HOME']+'/Software')
-from LyaP3D.tools import rebin_vector
+from tools import rebin_vector, SPEED_LIGHT, LAMBDA_LYA
 
 
 # def wavenumber_rebin(p3d_table, rebin_factor):
@@ -181,18 +177,14 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
     p3d_table: Table
     Table of P3D as function of K_parallel and K_perpendicular."""
 
+    ## TODO: cosmo should be args
     # Computing cosmo used for conversions
     Omega_m=0.3153
-    Omega_k=0.
     h = 0.7
-    lambda_lya = 1215.67 # Angstrom
-    Cosmo = constants.Cosmo(Omega_m, Omega_k, H0=100*h)
-    rcomov = Cosmo.get_r_comov
-    distang = Cosmo.get_dist_m
-    hubble = Cosmo.get_hubble
+    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
 
     # Conversion factor from degree to Mpc
-    deg_to_Mpc = distang(mean_redshift) * np.pi / 180
+    deg_to_Mpc = cosmo.comoving_distance(mean_redshift).value * np.pi / 180
     
     # mean_ang_separation is always saved in degrees it must be converted to Mpc/h if k_perp is defined in [Mpc/h]^-1
     if units_k_perpendicular == '[Mpc/h]^-1':
@@ -311,27 +303,23 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
     p3d_table: Table
     Table of P3D as function of Mu and K."""
 
+    ## TODO: cosmo should be args
     # Computing cosmo used for conversions
     Omega_m=0.3153
-    Omega_k=0.
     h = 0.7
-    lambda_lya = 1215.67 # Angstrom
-    Cosmo = constants.Cosmo(Omega_m, Omega_k, H0=100*h)
-    rcomov = Cosmo.get_r_comov
-    distang = Cosmo.get_dist_m
-    hubble = Cosmo.get_hubble
+    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
 
     # Conversion factor from degree to Mpc
-    deg_to_Mpc = distang(mean_redshift) * np.pi / 180
+    deg_to_Mpc = cosmo.comoving_distance(mean_redshift).value * np.pi / 180
 
     # mean_ang_separation is always saved in degrees it must be converted to Mpc/h
     angular_separation_array = np.array(pcross_table['mean_ang_separation']) * deg_to_Mpc * h # [Mpc/h]
 
     # converting k_parallel and pcross to Mpc/h if needed
     if input_units == 'km/s': # Must be converted to Mpc/h
-        conversion_factor = (1 + mean_redshift) * h / hubble(mean_redshift)
+        conversion_factor = (1 + mean_redshift) * h / cosmo.H(mean_redshift).value
     elif input_units == 'Angstrom':
-        conversion_factor = SPEED_LIGHT * h / (hubble(mean_redshift) * lambda_lya)
+        conversion_factor = SPEED_LIGHT * h / (cosmo.H(mean_redshift).value * LAMBDA_LYA)
     else:
         conversion_factor = 1
 
@@ -373,9 +361,9 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
 
     # converting k_parallel and p3d to desired output units
     if output_units == 'km/s': # Must be converted from Mpc/h to km/s
-        conversion_factor = (1 + mean_redshift) * h / hubble(mean_redshift)
+        conversion_factor = (1 + mean_redshift) * h / cosmo.H(mean_redshift).value
     elif output_units == 'Angstrom': # Must be converted from Mpc/h to Angstrom
-        conversion_factor = SPEED_LIGHT * h / (hubble(mean_redshift) * lambda_lya)
+        conversion_factor = SPEED_LIGHT * h / (cosmo.H(mean_redshift).value * LAMBDA_LYA)
     else:
         conversion_factor = 1
 
@@ -392,16 +380,11 @@ def plot_integrand(pcross_table):
     
     # Computing cosmo used for Conversions
     Omega_m=0.3153
-    Omega_k=0.
     h = 0.7
-    lambda_lya = 1215.67 # Angstrom
-    Cosmo = constants.Cosmo(Omega_m, Omega_k, H0=100*h)
-    rcomov = Cosmo.get_r_comov
-    distang = Cosmo.get_dist_m
-    hubble = Cosmo.get_hubble
+    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
 
     # Conversion from degree to Mpc
-    deg_to_Mpc = distang(z) * np.pi / 180
+    deg_to_Mpc = cosmo.comoving_distance(z).value * np.pi / 180
     
     # Choice of k_parallel and k_perpendicular
     k_parallel_min = np.min(pcross_table['k_parallel'][0])
