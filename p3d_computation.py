@@ -94,33 +94,39 @@ def _pcross_interpolated(pcross_table, angular_separation_array, n_angsep=1000,
 	else:
 		angular_separation_array_fine_binning = np.linspace(ang_sep_min, ang_sep_max, n_angsep)
 
-	Pcross_interpolated = np.zeros((len(k_parallel), n_angsep))
-	for ik_par, k_par in enumerate(k_parallel):  # k_par in [h/Mpc]
-		# Reading Pcross from table
-		try:
-			Pcross = np.array(pcross_table['corrected_power_spectrum'][:,ik_par])
-		except:
-			Pcross = np.array(pcross_table['mean_power_spectrum'][:,ik_par])
+	# Reading Pcross from table
+	try:
+		Pcross = np.array(pcross_table['corrected_power_spectrum'])
+	except:
+		Pcross = np.array(pcross_table['mean_power_spectrum'])
 
-		# Add fluctuations
-		if add_noise:
-			error_Pcross = np.array(pcross_table['error_power_spectrum'][:,ik_par])
+	# Add fluctuations
+	if add_noise:
+		if 'covmat_power_spectrum' in pcross_table.keys():
+			# One covariance matrix per angular separation bin:
+			for i_angsep in range(len(angular_separation_array)):
+				covmat = np.array(pcross_table['covmat_power_spectrum'][i_angsep,:,:])
+				Pcross[i_angsep,:,:] = np.random.multivariate_normal(Pcross[i_angsep,:], covmat)
+		else:
+			error_Pcross = np.array(pcross_table['error_power_spectrum'])
 			Pcross = np.random.normal(Pcross, error_Pcross)
 
+	Pcross_interpolated = np.zeros( (n_angsep, len(k_parallel)) )
+	for ik_par, k_par in enumerate(k_parallel):  # k_par in [h/Mpc]
 		# Interpolating Pcross
 		if interp_method == 'none':
-			Pcross_interpolated[ik_par,:] = Pcross
+			Pcross_interpolated[:, ik_par] = Pcross[:, ik_par]
 		else:
 			if interp_method == 'UnivariateSpline':
 				interpolation_function_Pcross = scipy.interpolate.UnivariateSpline(
-					angular_separation_array, Pcross, s=smoothing)
+					angular_separation_array, Pcross[:, ik_par], s=smoothing)
 			elif interp_method == 'PchipInterpolator':
 				interpolation_function_Pcross = scipy.interpolate.PchipInterpolator(
-					angular_separation_array, Pcross)
+					angular_separation_array, Pcross[:, ik_par])
 			else:
 				raise ValueError('Wrong interp_method')
 			# Pcross_interpolated computation
-			Pcross_interpolated[ik_par,:] = interpolation_function_Pcross(angular_separation_array_fine_binning)
+			Pcross_interpolated[:, ik_par] = interpolation_function_Pcross(angular_separation_array_fine_binning)
 
 	return (angular_separation_array_fine_binning, Pcross_interpolated)
 
@@ -201,7 +207,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
 	if compute_errors == True:
 		# Defining number of iterations of Pcross
 		n_iterations = 100
-		random_Pcross_interpolated = np.zeros((n_iterations, len(k_parallel), n_angsep))
+		random_Pcross_interpolated = np.zeros( (n_iterations, n_angsep, len(k_parallel)) )
 		for i in range(n_iterations):
 			_, pcross_fluct = _pcross_interpolated(pcross_table,
 							angular_separation_array,
@@ -221,7 +227,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
 	for ik_par, k_par in enumerate(k_parallel):  # k_par in [h/Mpc]
 		for ik_perp, k_perp in enumerate(k_perpendicular): # k_perp in [h/Mpc]
 			#  Defining integrand_Pcross
-			integrand_Pcross = 2 * np.pi * ang_sep_finebin * scipy.special.j0(ang_sep_finebin * k_perp) * Pcross_interpolated[ik_par,:]
+			integrand_Pcross = 2 * np.pi * ang_sep_finebin * scipy.special.j0(ang_sep_finebin * k_perp) * Pcross_interpolated[:,ik_par]
 
 			# Computing integral to get P3D
 			P3D = np.trapz(integrand_Pcross, ang_sep_finebin)
@@ -232,7 +238,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
 
 			if compute_errors == True:
 				# Defining integrand_random_Pcross
-				integrand_random_Pcross = 2 * np.pi * ang_sep_finebin * scipy.special.j0(ang_sep_finebin * k_perp) * random_Pcross_interpolated[:,ik_par,:]
+				integrand_random_Pcross = 2 * np.pi * ang_sep_finebin * scipy.special.j0(ang_sep_finebin * k_perp) * random_Pcross_interpolated[:,:,ik_par]
 
 				# Computing integral to get P3D
 				random_P3D = np.trapz(integrand_random_Pcross, angular_separation_array_fine_binning, axis=-1)
@@ -333,6 +339,19 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
 							pcross_table, angular_separation_array,
 							n_angsep=n_angsep, interp_method=interp_method)
 
+	# Generating n_iterations of random Pcross and interpolating each before error_P3D computation
+	if compute_errors == True:
+		# Defining number of iterations of Pcross
+		n_iterations = 100
+		random_Pcross_interpolated = np.zeros( (n_iterations, n_angsep, len(k_parallel)) )
+		for i in range(n_iterations):
+			_, pcross_fluct = _pcross_interpolated(pcross_table,
+							angular_separation_array,
+							n_angsep=n_angsep,
+							interp_method=interp_method,
+							add_noise=True)
+			random_Pcross_interpolated[i,:,:] = pcross_fluct
+
     # Initializing P3D table
     p3d_table = Table()
     p3d_table['mu'] = np.array(mu_array)
@@ -350,7 +369,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
 			k_perp = np.sqrt(k**2 - k_par**2)
 
 			# Defining integrand_Pcross
-			integrand_Pcross = 2 * np.pi * ang_sep_finebin * scipy.special.j0(ang_sep_finebin * k_perp) * Pcross_interpolated[ik_par,:]
+			integrand_Pcross = 2 * np.pi * ang_sep_finebin * scipy.special.j0(ang_sep_finebin * k_perp) * Pcross_interpolated[:,ik_par]
 
 			# Computing integral to get P3D
 			P3D = np.trapz(integrand_Pcross, ang_sep_finebin)
@@ -358,6 +377,12 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
 			# Filling table
 			p3d_table['k'][i_mu,ik_par] = k
 			p3d_table['P3D'][i_mu,ik_par] = P3D
+
+			if compute_errors == True:
+				integrand_random_Pcross = 2 * np.pi * ang_sep_finebin * scipy.special.j0(ang_sep_finebin * k_perp) * random_Pcross_interpolated[:,:,ik_par]
+				random_P3D = np.trapz(integrand_random_Pcross, angular_separation_array_fine_binning, axis=-1)
+				error_P3D = np.std(random_P3D)
+				p3d_table['error_P3D'][i_mu,ik_par] = error_P3D
 
     # converting k_parallel and p3d to desired output units
     if output_units == 'km/s': # Must be converted from Mpc/h to km/s
@@ -368,6 +393,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
         conversion_factor = 1
 
     p3d_table['P3D'] /= conversion_factor**3
+    p3d_table['error_P3D'] /= conversion_factor**3
     p3d_table['k'] *= conversion_factor
 
     return p3d_table
