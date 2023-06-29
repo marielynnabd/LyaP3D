@@ -1,4 +1,4 @@
-""" This module provides a set of useful functions used for Pcross and P3D computations."""
+""" This module provides a set of useful functions used for Pcross and P3D computations"""
  
 
 import numpy as np
