@@ -471,8 +471,8 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
     
     return mock_mean_power_spectrum
 
-# def wavenumber_rebin(power_spectrum_table, n_kbins):
-def wavenumber_rebin(power_spectrum_table, rebin_factor):
+def wavenumber_rebin(power_spectrum_table, n_kbins):
+# def wavenumber_rebin(power_spectrum_table, rebin_factor):
     """ This function rebins the power spectrum into wavenumber bins
     
     Arguments:
@@ -492,66 +492,87 @@ def wavenumber_rebin(power_spectrum_table, rebin_factor):
     Same table as in input, but with rebinned power spectrum columns added to the table
     """
     
-    # k_bin_edges = np.logspace(-2, np.log10(np.max(power_spectrum_table['k_parallel'][0])), num=n_kbins) # same units as k_parallel
-    # k_bin_centers = np.around((k_bin_edges[1:] + k_bin_edges[:-1]) / 2, 5) # same units as k_parallel
+    k_bin_edges = np.logspace(-2, np.log10(np.max(power_spectrum_table['k_parallel'][0])), num=n_kbins) # same units as k_parallel
+    k_bin_centers = np.around((k_bin_edges[1:] + k_bin_edges[:-1]) / 2, 5) # same units as k_parallel
     
-    # First rebin k_parallel array
-    k_parallel_rebinned = rebin_vector(power_spectrum_table['k_parallel'][0], pack=2, rebin_opt='mean', verbose=False)
+#     # First rebin k_parallel array
+#     k_parallel_rebinned = rebin_vector(power_spectrum_table['k_parallel'][0], pack=2, rebin_opt='mean', verbose=False)
     
-    # Add columns to power_spectrum_table
-    power_spectrum_table['k_parallel_rebinned'] = np.zeros((len(power_spectrum_table), len(k_parallel_rebinned)))
-    power_spectrum_table['mean_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_parallel_rebinned)))
-    power_spectrum_table['error_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_parallel_rebinned)))
-    try:
-        power_spectrum_table['resolution_correction_rebinned'] = np.zeros((len(power_spectrum_table), len(k_parallel_rebinned)))
-        power_spectrum_table['corrected_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_parallel_rebinned)))
+#     # Add columns to power_spectrum_table
+#     power_spectrum_table['k_parallel_rebinned'] = np.zeros((len(power_spectrum_table), len(k_parallel_rebinned)))
+#     power_spectrum_table['mean_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_parallel_rebinned)))
+#     power_spectrum_table['error_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_parallel_rebinned)))
+#     try:
+#         power_spectrum_table['resolution_correction_rebinned'] = np.zeros((len(power_spectrum_table), len(k_parallel_rebinned)))
+#         power_spectrum_table['corrected_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_parallel_rebinned)))
 
+#     except:
+#         pass
+
+    # Add columns to power_spectrum_table
+    power_spectrum_table['k_parallel_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
+    power_spectrum_table['mean_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
+    power_spectrum_table['error_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
+    try:
+        power_spectrum_table['resolution_correction_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
+        power_spectrum_table['corrected_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
     except:
         pass
 
     for j in range(len(power_spectrum_table)):
 
-        mean_power_spectrum_rebinned = rebin_vector(power_spectrum_table['mean_power_spectrum'][j], 
-                                                    pack=2, rebin_opt='mean', verbose=False)
-        error_power_spectrum_rebinned = rebin_vector(power_spectrum_table['error_power_spectrum'][j], 
-                                                    pack=2, rebin_opt='mean', verbose=False) / np.sqrt(rebin_factor)
-        try:
-            resolution_correction_rebinned = rebin_vector(power_spectrum_table['resolution_correction'][j],
-                                                        pack=2, rebin_opt='mean', verbose=False)
-            corrected_power_spectrum_rebinned = rebin_vector(power_spectrum_table['corrected_power_spectrum'][j],
-                                                        pack=2, rebin_opt='mean', verbose=False)
+#         mean_power_spectrum_rebinned = rebin_vector(power_spectrum_table['mean_power_spectrum'][j], 
+#                                                     pack=2, rebin_opt='mean', verbose=False)
+#         error_power_spectrum_rebinned = rebin_vector(power_spectrum_table['error_power_spectrum'][j], 
+#                                                     pack=2, rebin_opt='mean', verbose=False) / np.sqrt(rebin_factor)
+#         try:
+#             resolution_correction_rebinned = rebin_vector(power_spectrum_table['resolution_correction'][j],
+#                                                         pack=2, rebin_opt='mean', verbose=False)
+#             corrected_power_spectrum_rebinned = rebin_vector(power_spectrum_table['corrected_power_spectrum'][j],
+#                                                         pack=2, rebin_opt='mean', verbose=False)
 
-        except:
-            pass
+#         except:
+#             pass
 
-        power_spectrum_table['k_parallel_rebinned'][j,:] = k_parallel_rebinned
-        power_spectrum_table['mean_power_spectrum_rebinned'][j,:] = mean_power_spectrum_rebinned 
-        power_spectrum_table['error_power_spectrum_rebinned'][j,:] = error_power_spectrum_rebinned
-        try:
-            power_spectrum_table['resolution_correction_rebinned'][j,:] = resolution_correction_rebinned
-            power_spectrum_table['corrected_power_spectrum_rebinned'][j,:] = corrected_power_spectrum_rebinned
+#         power_spectrum_table['k_parallel_rebinned'][j,:] = k_parallel_rebinned
+#         power_spectrum_table['mean_power_spectrum_rebinned'][j,:] = mean_power_spectrum_rebinned 
+#         power_spectrum_table['error_power_spectrum_rebinned'][j,:] = error_power_spectrum_rebinned
+#         try:
+#             power_spectrum_table['resolution_correction_rebinned'][j,:] = resolution_correction_rebinned
+#             power_spectrum_table['corrected_power_spectrum_rebinned'][j,:] = corrected_power_spectrum_rebinned
 
-        except:
-            pass
+#         except:
+#             pass
 
-#         for ik_bin, k_bin in enumerate(k_bin_edges[:-1]):
+        for ik_bin, k_bin in enumerate(k_bin_edges[:-1]):
 
-#             select_k = (power_spectrum_table['k_parallel'][j] > k_bin_edges[ik_bin]) & (
-#                 power_spectrum_table['k_parallel'][j] <= k_bin_edges[ik_bin+1])
+            select_k = (power_spectrum_table['k_parallel'][j] > k_bin_edges[ik_bin]) & (
+                power_spectrum_table['k_parallel'][j] <= k_bin_edges[ik_bin+1])
 
-#             mean_power_spectrum_rebinned = np.mean(power_spectrum_table['mean_power_spectrum'][j][select_k])
-#             error_power_spectrum_rebinned = np.mean(power_spectrum_table['error_power_spectrum'][j][select_k]) / np.sqrt(np.sum(select_k))
-#             resolution_correction_rebinned = np.mean(power_spectrum_table['resolution_correction'][j][select_k])
+            mean_power_spectrum_rebinned = np.mean(power_spectrum_table['mean_power_spectrum'][j][select_k])
+            error_power_spectrum_rebinned = np.mean(power_spectrum_table['error_power_spectrum'][j][select_k]) / np.sqrt(np.sum(select_k))
+            power_spectrum_table['k_parallel_rebinned'][j,:] = k_bin_centers
+            power_spectrum_table['mean_power_spectrum_rebinned'][j,ik_bin] = mean_power_spectrum_rebinned 
+            power_spectrum_table['error_power_spectrum_rebinned'][j,ik_bin] = error_power_spectrum_rebinned
             
-            # power_spectrum_table['k_parallel_rebinned'][j,:] = k_parallel_rebinned
-            # power_spectrum_table['mean_power_spectrum_rebinned'][j,ik_bin] = mean_power_spectrum_rebinned 
-            # power_spectrum_table['error_power_spectrum_rebinned'][j,ik_bin] = error_power_spectrum_rebinned
-            # power_spectrum_table['resolution_correction_rebinned'][j,ik_bin] = resolution_correction_rebinned
-            
+            try:
+                resolution_correction_rebinned = np.mean(power_spectrum_table['resolution_correction'][j][select_k])
+                corrected_power_spectrum_rebinned = np.mean(power_spectrum_table['corrected_power_spectrum'][j][select_k])
+                power_spectrum_table['resolution_correction_rebinned'][j,ik_bin] = resolution_correction_rebinned
+                power_spectrum_table['corrected_power_spectrum_rebinned'][j,ik_bin] = corrected_power_spectrum_rebinned
+            except:
+                pass
+
     return power_spectrum_table
 
 
-def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_edges, rebin_factor, p_noise=0,
+# def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_edges, rebin_factor, p_noise=0,
+#                                     min_snr_p_cross=None, min_snr_p_auto=None,
+#                                     max_resolution_p_cross=None, max_resolution_p_auto=None, 
+#                                     resolution_correction=False, reshuffling=False,
+#                                     k_binning=False, data_type='mocks', units='Angstrom', 
+#                                     radec_names=['ra', 'dec']): 
+def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_edges, n_kbins, p_noise=0,
                                     min_snr_p_cross=None, min_snr_p_auto=None,
                                     max_resolution_p_cross=None, max_resolution_p_auto=None, 
                                     resolution_correction=False, reshuffling=False,
@@ -677,9 +698,11 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
         
     if k_binning:
         print('Wavenumber rebinning')
+        # all_mocks_mean_power_spectrum = wavenumber_rebin(power_spectrum_table=all_mocks_mean_power_spectrum, 
+        #                                                  rebin_factor=rebin_factor)
         all_mocks_mean_power_spectrum = wavenumber_rebin(power_spectrum_table=all_mocks_mean_power_spectrum, 
-                                                         rebin_factor=rebin_factor)
-        
+                                                         n_kbins=n_kbins)
+
     return all_mocks_mean_power_spectrum
 
 # Commented because we don't do the analysis on many mock realizations right now
