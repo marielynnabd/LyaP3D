@@ -106,7 +106,7 @@ def _pcross_interpolated(pcross_table, angular_separation_array, n_angsep=1000,
             # One covariance matrix per angular separation bin:
             for i_angsep in range(len(angular_separation_array)):
                 covmat = np.array(pcross_table['covmat_power_spectrum'][i_angsep,:,:])
-                Pcross[i_angsep,:,:] = np.random.multivariate_normal(Pcross[i_angsep,:], covmat)
+                Pcross[i_angsep,:] = np.random.multivariate_normal(Pcross[i_angsep,:], covmat)
         else:
             error_Pcross = np.array(pcross_table['error_power_spectrum'])
             Pcross = np.random.normal(Pcross, error_Pcross)
@@ -199,7 +199,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
         angular_separation_array = np.array(pcross_table['mean_ang_separation']) # [degree]
     k_parallel = np.array(pcross_table['k_parallel'][0])
 
-    ang_sep_finebin, Pcross_interpolated = _pcross_interpolated(
+    angular_separation_array_fine_binning, Pcross_interpolated = _pcross_interpolated(
                             pcross_table, angular_separation_array,
                             n_angsep=n_angsep, interp_method=interp_method, smoothing=smoothing)
 
@@ -228,10 +228,10 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
     for ik_par, k_par in enumerate(k_parallel):  # k_par in [h/Mpc]
         for ik_perp, k_perp in enumerate(k_perpendicular): # k_perp in [h/Mpc]
             #  Defining integrand_Pcross
-            integrand_Pcross = 2 * np.pi * ang_sep_finebin * scipy.special.j0(ang_sep_finebin * k_perp) * Pcross_interpolated[:,ik_par]
+            integrand_Pcross = 2 * np.pi * angular_separation_array_fine_binning * scipy.special.j0(angular_separation_array_fine_binning * k_perp) * Pcross_interpolated[:,ik_par]
 
             # Computing integral to get P3D
-            P3D = np.trapz(integrand_Pcross, ang_sep_finebin)
+            P3D = np.trapz(integrand_Pcross, angular_separation_array_fine_binning)
 
             # Filling table
             p3d_table['k_parallel'][ik_perp,ik_par] = k_par
@@ -239,7 +239,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
 
             if compute_errors == True:
                 # Defining integrand_random_Pcross
-                integrand_random_Pcross = 2 * np.pi * ang_sep_finebin * scipy.special.j0(ang_sep_finebin * k_perp) * random_Pcross_interpolated[:,:,ik_par]
+                integrand_random_Pcross = 2 * np.pi * angular_separation_array_fine_binning * scipy.special.j0(angular_separation_array_fine_binning * k_perp) * random_Pcross_interpolated[:,:,ik_par]
 
                 # Computing integral to get P3D
                 random_P3D = np.trapz(integrand_random_Pcross, angular_separation_array_fine_binning, axis=-1)
@@ -336,7 +336,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
     # reading k_parallel from pcross_table
     k_parallel = np.array(pcross_table['k_parallel'][0])
 
-    ang_sep_finebin, Pcross_interpolated = _pcross_interpolated(
+    angular_separation_array_fine_binning, Pcross_interpolated = _pcross_interpolated(
                             pcross_table, angular_separation_array,
                             n_angsep=n_angsep, interp_method=interp_method, smoothing=smoothing)
 
@@ -371,17 +371,17 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
             k_perp = np.sqrt(k**2 - k_par**2)
 
             # Defining integrand_Pcross
-            integrand_Pcross = 2 * np.pi * ang_sep_finebin * scipy.special.j0(ang_sep_finebin * k_perp) * Pcross_interpolated[:,ik_par]
+            integrand_Pcross = 2 * np.pi * angular_separation_array_fine_binning * scipy.special.j0(angular_separation_array_fine_binning * k_perp) * Pcross_interpolated[:,ik_par]
 
             # Computing integral to get P3D
-            P3D = np.trapz(integrand_Pcross, ang_sep_finebin)
+            P3D = np.trapz(integrand_Pcross, angular_separation_array_fine_binning)
 
             # Filling table
             p3d_table['k'][i_mu,ik_par] = k
             p3d_table['P3D'][i_mu,ik_par] = P3D
 
             if compute_errors == True:
-                integrand_random_Pcross = 2 * np.pi * ang_sep_finebin * scipy.special.j0(ang_sep_finebin * k_perp) * random_Pcross_interpolated[:,:,ik_par]
+                integrand_random_Pcross = 2 * np.pi * angular_separation_array_fine_binning * scipy.special.j0(angular_separation_array_fine_binning * k_perp) * random_Pcross_interpolated[:,:,ik_par]
                 random_P3D = np.trapz(integrand_random_Pcross, angular_separation_array_fine_binning, axis=-1)
                 error_P3D = np.std(random_P3D)
                 p3d_table['error_P3D'][i_mu,ik_par] = error_P3D

@@ -262,7 +262,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
             mean_resolution_correction_p_cross[i] = np.mean(resolution_correction_p_cross[:,i])
             corrected_p_cross[i] = mean_p_cross[i] / mean_resolution_correction_p_cross[i]
         #- covariance matrix:
-        pcross_flucts = pcross.real - mean_p_cross
+        pcross_flucts = p_cross.real - mean_p_cross
         for i in range(Nk):
             for j in range(Nk):
                 covmat_p_cross[i,j] = np.mean(pcross_flucts[:,i]*pcross_flucts[:,j]) / (N_pairs - 1)
