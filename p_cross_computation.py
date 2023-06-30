@@ -551,7 +551,7 @@ def wavenumber_rebin(power_spectrum_table, rebin_factor):
     return power_spectrum_table
 
 
-def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, rebin_factor, p_noise=0,
+def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_edges, rebin_factor, p_noise=0,
                                     min_snr_p_cross=None, min_snr_p_auto=None,
                                     max_resolution_p_cross=None, max_resolution_p_auto=None, 
                                     resolution_correction=False, reshuffling=False,
@@ -572,6 +572,9 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, rebin_factor, 
     ncpu: Integer
     
     ang_sep_max: Same definition as in function get_possible_pairs
+    
+    ang_sep_bin_edges: Array
+    Array of angular separation bin edges
     
     n_kbins: Integer
     Number of wavenumber bins if k_binning
@@ -643,7 +646,7 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, rebin_factor, 
         los_pairs_table = vstack([output_get_possible_pairs[i] for i in range(len(output_get_possible_pairs))])
 
         # Defining edges of angular separation bins used for next step
-        ang_sep_bin_edges = np.array([0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1])
+        # ang_sep_bin_edges = np.array([0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1])
         if radec_names == ['x', 'y']:
             ang_sep_bin_edges *= deg_to_Mpc * h
 
