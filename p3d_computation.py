@@ -75,7 +75,7 @@ def wavenumber_rebin(p3d_table, n_kbins):
 
 
 def _pcross_interpolated(pcross_table, angular_separation_array, n_angsep=1000,
-						interp_method='UnivariateSpline',
+						interp_method='UnivariateSpline', smoothing=0,
 						add_noise=False):
 	#- Compute Pcross_interpolated(kpar, angsep)
 	#      add_noise: if True, add gaussian fluctuations on top of Pcross
@@ -201,7 +201,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
 
     ang_sep_finebin, Pcross_interpolated = _pcross_interpolated(
                             pcross_table, angular_separation_array,
-                            n_angsep=n_angsep, interp_method=interp_method)
+                            n_angsep=n_angsep, interp_method=interp_method, smoothing=smoothing)
 
     # Generating n_iterations of random Pcross and interpolating each before error_P3D computation
     if compute_errors == True:
@@ -213,6 +213,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
                             angular_separation_array,
                             n_angsep=n_angsep,
                             interp_method=interp_method,
+                            smoothing=smoothing,
                             add_noise=True)
             random_Pcross_interpolated[i,:,:] = pcross_fluct
 
@@ -337,7 +338,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
 
     ang_sep_finebin, Pcross_interpolated = _pcross_interpolated(
                             pcross_table, angular_separation_array,
-                            n_angsep=n_angsep, interp_method=interp_method)
+                            n_angsep=n_angsep, interp_method=interp_method, smoothing=smoothing)
 
     # Generating n_iterations of random Pcross and interpolating each before error_P3D computation
     if compute_errors == True:
@@ -349,6 +350,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
                             angular_separation_array,
                             n_angsep=n_angsep,
                             interp_method=interp_method,
+                            smoothing=smoothing,
                             add_noise=True)
             random_Pcross_interpolated[i,:,:] = pcross_fluct
 
