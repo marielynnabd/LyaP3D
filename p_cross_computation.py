@@ -262,11 +262,10 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
             mean_resolution_correction_p_cross[i] = np.mean(resolution_correction_p_cross[:,i])
             corrected_p_cross[i] = mean_p_cross[i] / mean_resolution_correction_p_cross[i]
         #- covariance matrix:
+        pcross_flucts = pcross.real - mean_p_cross
         for i in range(Nk):
-            fluct_i = p_cross.real[:,i]-mean_p_cross[i]
             for j in range(Nk):
-                fluct_j = p_cross.real[:,j]-mean_p_cross[j]
-                covmat_p_cross[i,j] = np.mean(fluct_i*fluct_j) / (N_pairs - 1)
+                covmat_p_cross[i,j] = np.mean(pcross_flucts[:,i]*pcross_flucts[:,j]) / (N_pairs - 1)
 
         p_cross_table['k_parallel'][i_ang_sep, :] = k_parallel
         p_cross_table['mean_power_spectrum'][i_ang_sep, :] = mean_p_cross  
@@ -418,11 +417,10 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
         mean_resolution_correction_p_auto[i] = np.mean(resolution_correction_p_auto[:, i])
         corrected_p_auto[i] = (mean_p_auto[i] - p_noise) / mean_resolution_correction_p_auto[i]
     #- covariance matrix:
+    pauto_flucts = p_auto.real - mean_p_auto
     for i in range(Nk):
-        fluct_i = p_auto.real[:,i]-mean_p_auto[i]
         for j in range(Nk):
-            fluct_j = p_auto.real[:,j]-mean_p_auto[j]
-            covmat_p_auto[i,j] = np.mean(fluct_i*fluct_j) / (Nlos - 1)
+            covmat_p_auto[i,j] = np.mean(pauto_flucts[:,i]*pauto_flucts[:,j]) / (Nlos - 1)
 
     p_auto_table['k_parallel'][0, :] = k_parallel
     p_auto_table['mean_power_spectrum'][0, :] = mean_p_auto  
