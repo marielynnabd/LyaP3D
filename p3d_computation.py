@@ -11,7 +11,6 @@ from astropy.cosmology import FlatLambdaCDM
 from tools import rebin_vector, SPEED_LIGHT, LAMBDA_LYA
 
 
-# def wavenumber_rebin(p3d_table, rebin_factor):
 def wavenumber_rebin(p3d_table, n_kbins):
     """ This function rebins the 3D power spectrum into k_parallel bins
     
@@ -31,30 +30,13 @@ def wavenumber_rebin(p3d_table, n_kbins):
     p3d_table: Table
     Same table as in input, but with rebinned p3d columns added to the table
     """
-    
+
     k_bin_edges = np.logspace(-2, np.log10(np.max(p3d_table['k_parallel'][0])), num=n_kbins) # same units as k_parallel
     k_bin_centers = np.around((k_bin_edges[1:] + k_bin_edges[:-1]) / 2, 5) # same units as k_parallel
 
-#     # First rebin k_parallel array
-#     k_parallel_rebinned = rebin_vector(p3d_table['k_parallel'][0], pack=2, rebin_opt='mean', verbose=False)
-    
-    # p3d_table['k_parallel_rebinned'] = np.zeros((len(p3d_table), len(k_parallel_rebinned)))
-    # p3d_table['P3D_rebinned'] = np.zeros((len(p3d_table), len(k_parallel_rebinned)))
-    # p3d_table['error_P3D_rebinned'] = np.zeros((len(p3d_table), len(k_parallel_rebinned)))
     p3d_table['k_parallel_rebinned'] = np.zeros((len(p3d_table), len(k_bin_centers)))
     p3d_table['P3D_rebinned'] = np.zeros((len(p3d_table), len(k_bin_centers)))
     p3d_table['error_P3D_rebinned'] = np.zeros((len(p3d_table), len(k_bin_centers)))
-    
-#     for j in range(len(p3d_table)):
-
-#         P3D_rebinned = rebin_vector(p3d_table['P3D'][j], 
-#                                                     pack=2, rebin_opt='mean', verbose=False)
-#         error_P3D_rebinned = rebin_vector(p3d_table['error_P3D'][j], 
-#                                                     pack=2, rebin_opt='mean', verbose=False) / np.sqrt(rebin_factor)
-        
-#         p3d_table['k_parallel_rebinned'][j,:] = k_parallel_rebinned
-#         p3d_table['P3D_rebinned'][j,:] = P3D_rebinned 
-#         p3d_table['error_P3D_rebinned'][j,:] = error_P3D_rebinned
 
     for j in range(len(p3d_table)):
     
