@@ -87,7 +87,7 @@ def get_possible_pairs(i_los, all_los_table, ang_sep_max, radec_names=['ra', 'de
 
 
 def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_snr_p_cross=None, max_resolution_p_cross=None,
-                         resolution_correction=False, reshuffling=False, data_type='mocks', units='Angstrom'):
+                         resolution_correction=False, reshuffling=False, with_covmat=True, data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for pairs with angular separations > 0 (called cross power spectrum):
           - Takes mock and corresponfing los_pairs_table
           _ Computes cross power spectrum for each pair
@@ -115,6 +115,9 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     
     reshuffling: Boolean, Default is False
     This is done in case we want to compute a cross spectrum wihout signal, ie. by correlating pixels that aren't correlated.
+    
+    with_covmat: Boolean, Default is True
+    Switch on/off covariance matrix computation
     
     data_type: String, Options: 'mocks', 'real'
     The type of data set on which we want to run the cross power spectrum computation.
@@ -197,7 +200,8 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     p_cross_table['k_parallel'] = np.zeros((n_ang_sep_bins, Nk))
     p_cross_table['mean_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
     p_cross_table['error_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
-    p_cross_table['covmat_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk, Nk))
+    if with_covmat:
+        p_cross_table['covmat_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk, Nk))
     p_cross_table['resolution_correction'] = np.zeros((n_ang_sep_bins, Nk))
     p_cross_table['corrected_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
 
@@ -253,7 +257,6 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
         mean_p_cross = np.zeros(Nk)
         mean_resolution_correction_p_cross = np.zeros(Nk)
         error_p_cross = np.zeros(Nk)
-        covmat_p_cross = np.zeros((Nk, Nk))
         corrected_p_cross = np.zeros(Nk)
 
         for i in range(Nk):
@@ -261,24 +264,26 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
             error_p_cross[i] = np.std(p_cross.real[:,i]) / np.sqrt(N_pairs - 1)
             mean_resolution_correction_p_cross[i] = np.mean(resolution_correction_p_cross[:,i])
             corrected_p_cross[i] = mean_p_cross[i] / mean_resolution_correction_p_cross[i]
-        #- covariance matrix:
-        pcross_flucts = p_cross.real - mean_p_cross
-        for i in range(Nk):
-            for j in range(Nk):
-                covmat_p_cross[i,j] = np.mean(pcross_flucts[:,i]*pcross_flucts[:,j]) / (N_pairs - 1)
 
         p_cross_table['k_parallel'][i_ang_sep, :] = k_parallel
         p_cross_table['mean_power_spectrum'][i_ang_sep, :] = mean_p_cross  
         p_cross_table['error_power_spectrum'][i_ang_sep, :] = error_p_cross
-        p_cross_table['covmat_power_spectrum'][i_ang_sep, :, :] = covmat_p_cross
         p_cross_table['resolution_correction'][i_ang_sep, :] = mean_resolution_correction_p_cross
         p_cross_table['corrected_power_spectrum'][i_ang_sep, :] = corrected_p_cross
-        
+
+        if with_covmat:  #- covariance matrix:
+            covmat_p_cross = np.zeros((Nk, Nk))
+            pcross_flucts = p_cross.real - mean_p_cross
+            for i in range(Nk):
+                for j in range(Nk):
+                    covmat_p_cross[i,j] = np.mean(pcross_flucts[:,i]*pcross_flucts[:,j]) / (N_pairs - 1)
+            p_cross_table['covmat_power_spectrum'][i_ang_sep, :, :] = covmat_p_cross
+
     return p_cross_table
 
 
 def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_auto=None, resolution_correction=True, 
-                        p_noise=0, data_type='mocks', units='Angstrom'):
+                        p_noise=0, with_covmat=True, data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for angular separation = 0 (Lya forest and itself, called auto power spectrum):
           - Takes all_los_table
           - Computes auto power spectrum for each LOS 
@@ -301,6 +306,9 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     p_noise: Float, Default is 0
     Value of Pnoise that we want to substract from p_auto. This is only for p_auto, in the case of p_cross, noise effect is zero.
 
+    with_covmat: Boolean, Default is True
+    Switch on/off covariance matrix computation
+    
     data_type: String, Options: 'mocks', 'real'
     The type of data set on which we want to run the auto power spectrum computation.
         - In the case of mocks: The auto power spectrum will be computed in [Angstrom] by default,
@@ -371,7 +379,8 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     p_auto_table['k_parallel'] = np.zeros((1, Nk))
     p_auto_table['mean_power_spectrum'] = np.zeros((1, Nk))
     p_auto_table['error_power_spectrum'] = np.zeros((1, Nk))
-    p_auto_table['covmat_power_spectrum'] = np.zeros((1, Nk, Nk))
+    if with_covmat:
+        p_auto_table['covmat_power_spectrum'] = np.zeros((1, Nk, Nk))
     p_auto_table['resolution_correction'] = np.zeros((1, Nk))
     p_auto_table['corrected_power_spectrum'] = np.zeros((1, Nk))
     
@@ -408,7 +417,6 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     # mean_p_auto computation
     mean_p_auto = np.zeros(Nk)
     error_p_auto = np.zeros(Nk)
-    covmat_p_auto = np.zeros((Nk, Nk))
     mean_resolution_correction_p_auto = np.zeros(Nk)
     corrected_p_auto = np.zeros(Nk)
     for i in range(Nk):
@@ -416,19 +424,21 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
         error_p_auto[i] = np.std(p_auto[:, i]) / np.sqrt(Nlos - 1)
         mean_resolution_correction_p_auto[i] = np.mean(resolution_correction_p_auto[:, i])
         corrected_p_auto[i] = (mean_p_auto[i] - p_noise) / mean_resolution_correction_p_auto[i]
-    #- covariance matrix:
-    pauto_flucts = p_auto.real - mean_p_auto
-    for i in range(Nk):
-        for j in range(Nk):
-            covmat_p_auto[i,j] = np.mean(pauto_flucts[:,i]*pauto_flucts[:,j]) / (Nlos - 1)
 
     p_auto_table['k_parallel'][0, :] = k_parallel
     p_auto_table['mean_power_spectrum'][0, :] = mean_p_auto  
     p_auto_table['error_power_spectrum'][0, :] = error_p_auto
-    p_auto_table['covmat_power_spectrum'][0, :, :] = covmat_p_auto
     p_auto_table['resolution_correction'][0, :] = mean_resolution_correction_p_auto
     p_auto_table['corrected_power_spectrum'][0, :] = corrected_p_auto
     p_auto_table['N'][0] = len(p_auto)
+
+    if with_covmat:  #- covariance matrix
+        covmat_p_auto = np.zeros((Nk, Nk))
+        pauto_flucts = p_auto.real - mean_p_auto
+        for i in range(Nk):
+            for j in range(Nk):
+                covmat_p_auto[i,j] = np.mean(pauto_flucts[:,i]*pauto_flucts[:,j]) / (Nlos - 1)
+        p_auto_table['covmat_power_spectrum'][0, :, :] = covmat_p_auto
 
     return p_auto_table
 
@@ -436,7 +446,7 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
 def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type='mocks', 
                                 units='Angstrom', p_noise=0, min_snr_p_cross=None, min_snr_p_auto=None,
                                 max_resolution_p_cross=None, max_resolution_p_auto=None, 
-                                resolution_correction=False, reshuffling=False):
+                                resolution_correction=False, reshuffling=False, with_covmat=True):
     """ - This function computes mean_power_spectrum: 
             - Takes all_los_table and pairs (1 mock)
             - Computes mean_p_auto and mean_p_cross using above functions
@@ -458,11 +468,13 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
                                          max_resolution_p_cross=max_resolution_p_cross,
                                          resolution_correction=resolution_correction,
                                          reshuffling=reshuffling,
+                                         with_covmat=with_covmat,
                                          data_type=data_type, units=units)
     p_auto_table = compute_mean_p_auto(all_los_table=all_los_table, 
                                        min_snr_p_auto=min_snr_p_auto, 
                                        max_resolution_p_auto=max_resolution_p_auto,
                                        resolution_correction=resolution_correction,
+                                       with_covmat=with_covmat,
                                        p_noise=p_noise,
                                        data_type=data_type, units=units)
     mock_mean_power_spectrum = vstack([p_auto_table, p_cross_table])
@@ -568,7 +580,7 @@ def wavenumber_rebin(power_spectrum_table, n_kbins):
 def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_edges, n_kbins, p_noise=0,
                                     min_snr_p_cross=None, min_snr_p_auto=None,
                                     max_resolution_p_cross=None, max_resolution_p_auto=None, 
-                                    resolution_correction=False, reshuffling=False,
+                                    resolution_correction=False, reshuffling=False, with_covmat=True,
                                     k_binning=False, data_type='mocks', units='Angstrom', 
                                     radec_names=['ra', 'dec']): 
     """ - This function computes all_mocks_mean_power_spectrum:
@@ -684,7 +696,8 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
                                                                max_resolution_p_cross=max_resolution_p_cross,
                                                                max_resolution_p_auto=max_resolution_p_auto, 
                                                                resolution_correction=resolution_correction, 
-                                                               reshuffling=reshuffling)
+                                                               reshuffling=reshuffling,
+                                                               with_covmat=with_covmat)
 
         # Stacking power spectra of all mocks in one table
         all_mocks_mean_power_spectrum = vstack([all_mocks_mean_power_spectrum, mock_mean_power_spectrum])  
