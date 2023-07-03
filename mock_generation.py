@@ -162,7 +162,7 @@ def draw_los(grf_box, los_number, pixel_size, z_box=2.6, noise=0):
             
             ra = (X * pixel_size) / (deg_to_Mpc * h)
             dec = (Y * pixel_size) / (deg_to_Mpc * h)
-            z = z_box + (cosmo.H(z).value * (Nz_array * pixel_size / h) / (SPEED_LIGHT)) # there must be a  / factor 0.7
+            z = z_box + (cosmo.H(z_box).value * (Nz_array * pixel_size / h) / (SPEED_LIGHT)) # there must be a  / factor 0.7
             
             all_los_table['ra'][j] = ra # degree
             all_los_table['dec'][j] = dec # degree

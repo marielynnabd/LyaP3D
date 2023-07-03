@@ -75,12 +75,12 @@ def wavenumber_rebin(p3d_table, n_kbins):
 
 
 def _pcross_interpolated(pcross_table, angular_separation_array, n_angsep=1000,
-						interp_method='UnivariateSpline', smoothing=0,
-						add_noise=False):
-	#- Compute Pcross_interpolated(kpar, angsep)
-	#      add_noise: if True, add gaussian fluctuations on top of Pcross
-	#				 (used to propagate Px error bars to P3D)
-	#      other args are described in main routines
+                        interp_method='UnivariateSpline', smoothing=0,
+                        add_noise=False):
+    #- Compute Pcross_interpolated(kpar, angsep)
+    #      add_noise: if True, add gaussian fluctuations on top of Pcross
+    #      (used to propagate Px error bars to P3D)
+    #      other args are described in main routines
 
     # reading k_parallel from pcross_table
     k_parallel = np.array(pcross_table['k_parallel'][0])
