@@ -469,6 +469,7 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
     
     return mock_mean_power_spectrum
 
+
 def wavenumber_rebin(power_spectrum_table, n_kbins):
 # def wavenumber_rebin(power_spectrum_table, rebin_factor):
     """ This function rebins the power spectrum into wavenumber bins
@@ -564,12 +565,6 @@ def wavenumber_rebin(power_spectrum_table, n_kbins):
     return power_spectrum_table
 
 
-# def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_edges, rebin_factor, p_noise=0,
-#                                     min_snr_p_cross=None, min_snr_p_auto=None,
-#                                     max_resolution_p_cross=None, max_resolution_p_auto=None, 
-#                                     resolution_correction=False, reshuffling=False,
-#                                     k_binning=False, data_type='mocks', units='Angstrom', 
-#                                     radec_names=['ra', 'dec']): 
 def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_edges, n_kbins, p_noise=0,
                                     min_snr_p_cross=None, min_snr_p_auto=None,
                                     max_resolution_p_cross=None, max_resolution_p_auto=None, 

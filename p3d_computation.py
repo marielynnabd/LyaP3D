@@ -131,7 +131,7 @@ def _pcross_interpolated(pcross_table, angular_separation_array, n_angsep=1000,
     return (angular_separation_array_fine_binning, Pcross_interpolated)
 
 
-def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular,
+def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular,
                   mean_redshift, interp_method='UnivariateSpline', smoothing=0, n_angsep=1000,
                   compute_errors=False, k_binning=False):
     """ This function computes the P3D out of the Pcross in cartesian coordinates:
@@ -148,10 +148,10 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
     Table of Pcross as function of K_parallel for different angular separation bins.
 
     k_peprendicular: Array
-    Array of k_perpendicular we want to use, either in [Mpc/h]^-1 or [degree]^-1, must be specified in the following argument
+    Array of k_perpandicular we want to use, either in [Mpc/h]^-1 or [degree]^-1, must be specified in the following argument
     
-    units_k_perpendicular: String, default: '[Mpc/h]^-1'
-    Units of input k_perpendicular
+    units_k_perpandicular: String, default: '[Mpc/h]^-1'
+    Units of input k_perpandicular
     Options: - '[Mpc/h]^-1': usually in the case of mocks
              - '[degree]^-1': usually in the case of real data
 
@@ -181,7 +181,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
     Return:
     -------
     p3d_table: Table
-    Table of P3D as function of K_parallel and K_perpendicular."""
+    Table of P3D as function of K_parallel and K_perpandicular."""
 
     ## TODO: cosmo should be args
     # Computing cosmo used for conversions
@@ -193,7 +193,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
     deg_to_Mpc = cosmo.comoving_distance(mean_redshift).value * np.pi / 180
     
     # mean_ang_separation is always saved in degrees it must be converted to Mpc/h if k_perp is defined in [Mpc/h]^-1
-    if units_k_perpendicular == '[Mpc/h]^-1':
+    if units_k_perpandicular == '[Mpc/h]^-1':
         angular_separation_array = np.array(pcross_table['mean_ang_separation']) * deg_to_Mpc * h # [Mpc/h]
     else:
         angular_separation_array = np.array(pcross_table['mean_ang_separation']) # [degree]
@@ -219,14 +219,14 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpendicular, units_k_perpendicular
 
     # Initializing P3D table
     p3d_table = Table()
-    p3d_table['k_perpendicular'] = np.array(k_perpendicular)
-    p3d_table['k_parallel'] = np.zeros((len(k_perpendicular), len(k_parallel)))
-    p3d_table['P3D'] = np.zeros((len(k_perpendicular), len(k_parallel)))
-    p3d_table['error_P3D'] = np.zeros((len(k_perpendicular), len(k_parallel)))
+    p3d_table['k_perpandicular'] = np.array(k_perpandicular)
+    p3d_table['k_parallel'] = np.zeros((len(k_perpandicular), len(k_parallel)))
+    p3d_table['P3D'] = np.zeros((len(k_perpandicular), len(k_parallel)))
+    p3d_table['error_P3D'] = np.zeros((len(k_perpandicular), len(k_parallel)))
 
     # Integrate Pcross_interpolated to compute P3D
     for ik_par, k_par in enumerate(k_parallel):  # k_par in [h/Mpc]
-        for ik_perp, k_perp in enumerate(k_perpendicular): # k_perp in [h/Mpc]
+        for ik_perp, k_perp in enumerate(k_perpandicular): # k_perp in [h/Mpc]
             #  Defining integrand_Pcross
             integrand_Pcross = 2 * np.pi * angular_separation_array_fine_binning * scipy.special.j0(angular_separation_array_fine_binning * k_perp) * Pcross_interpolated[:,ik_par]
 
@@ -366,7 +366,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
 
         for ik_par, k_par in enumerate(k_parallel):  # k_par in [h/Mpc]
 
-            # Computing k and k_perpendicular
+            # Computing k and k_perpandicular
             k = k_par / mu
             k_perp = np.sqrt(k**2 - k_par**2)
 
@@ -414,25 +414,25 @@ def plot_integrand(pcross_table):
     # Conversion from degree to Mpc
     deg_to_Mpc = cosmo.comoving_distance(z).value * np.pi / 180
     
-    # Choice of k_parallel and k_perpendicular
+    # Choice of k_parallel and k_perpandicular
     k_parallel_min = np.min(pcross_table['k_parallel'][0])
     k_parallel_max = np.max(pcross_table['k_parallel'][0])
     k_parallel = np.linspace(k_parallel_min, k_parallel_max, 20)
 
     
-    k_perpendicular_min = 0.17890103
-    k_perpendicular_max = 37.64856358
-    k_perpendicular = np.linspace(k_perpendicular_min, k_perpendicular_max, 12)
+    k_perpandicular_min = 0.17890103
+    k_perpandicular_max = 37.64856358
+    k_perpandicular = np.linspace(k_perpandicular_min, k_perpandicular_max, 12)
     
     # Knowing that mean_ang_separation is always saved in degrees it must be also converted to Mpc/h
     angular_separation_array = pcross_table['mean_ang_separation'] * deg_to_Mpc * h # [Mpc/h]
     
     # Initializing P3D table
     p3d_table = Table()
-    p3d_table['k_perpendicular'] = np.array(k_perpendicular)
-    p3d_table['k_parallel'] = np.zeros((len(k_perpendicular), len(k_parallel)))
-    p3d_table['P3D'] = np.zeros((len(k_perpendicular), len(k_parallel)))
-    p3d_table['error_P3D'] = np.zeros((len(k_perpendicular), len(k_parallel)))
+    p3d_table['k_perpandicular'] = np.array(k_perpandicular)
+    p3d_table['k_parallel'] = np.zeros((len(k_perpandicular), len(k_parallel)))
+    p3d_table['P3D'] = np.zeros((len(k_perpandicular), len(k_parallel)))
+    p3d_table['error_P3D'] = np.zeros((len(k_perpandicular), len(k_parallel)))
 
     print("Computing P3D from Pcross")
     for ik_par, k_par in enumerate(k_parallel):  # k_par in [h/Mpc]
@@ -441,7 +441,7 @@ def plot_integrand(pcross_table):
         fig.text(0.5, 0.04, '$\\theta$ [Mpc/h]', ha='center')
         ax_list = [[ax1, ax2, ax3], [ax4, ax5, ax6], [ax7, ax8, ax9], [ax10, ax11, ax12]]
 
-        for ik_perp, k_perp in enumerate(k_perpendicular):  # k_perp in [h/Mpc]
+        for ik_perp, k_perp in enumerate(k_perpandicular):  # k_perp in [h/Mpc]
             
             # P3D computation
             ## Reading Pcross from table
