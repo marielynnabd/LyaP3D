@@ -99,6 +99,9 @@ def draw_los(grf_box, los_number, pixel_size, z_box=2.6, noise=0):
     pixel_size: float
     Cell's size in [Mpc/h]
     
+    z_box: float
+    Redshift of box
+    
     noise: float
     Add white gaussian fluctuations to the deltas: noise = sigma(delta_los) per Angstrom
 
@@ -181,7 +184,7 @@ def draw_los(grf_box, los_number, pixel_size, z_box=2.6, noise=0):
             print('couple already exists')
 
         if noise>0:
-            pixel_size_angstrom = (h * pixel_size) * LAMBDA_LYA * cosmo.H(z).value / SPEED_LIGHT
+            pixel_size_angstrom = (pixel_size / h) * LAMBDA_LYA * cosmo.H(z).value / SPEED_LIGHT
             noise_per_pixel = noise * np.sqrt(1/pixel_size_angstrom)  # sigma(delta_F) ~ 1/sqrt(pixel size)
             all_los_table['delta_los'] += np.random.normal(scale=noise_per_pixel, size=(los_number, Nz))
 
