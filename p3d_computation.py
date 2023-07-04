@@ -31,21 +31,26 @@ def wavenumber_rebin(p3d_table, n_kbins):
     Same table as in input, but with rebinned p3d columns added to the table
     """
 
-    k_bin_edges = np.logspace(-2, np.log10(np.max(p3d_table['k_parallel'][0])), num=n_kbins) # same units as k_parallel
-    k_bin_centers = np.around((k_bin_edges[1:] + k_bin_edges[:-1]) / 2, 5) # same units as k_parallel
+    if 'k' in p3d_table.keys():
+        k_to_be_rebinned = 'k'
+    else:
+        k_to_be_rebinned = 'k_parallel'
 
-    p3d_table['k_parallel_rebinned'] = np.zeros((len(p3d_table), len(k_bin_centers)))
-    p3d_table['P3D_rebinned'] = np.zeros((len(p3d_table), len(k_bin_centers)))
-    p3d_table['error_P3D_rebinned'] = np.zeros((len(p3d_table), len(k_bin_centers)))
+    p3d_table[str(k_to_be_rebinned)+'_rebinned'] = np.zeros((len(p3d_table), n_kbins))
+    p3d_table['P3D_rebinned'] = np.zeros((len(p3d_table), n_kbins))
+    p3d_table['error_P3D_rebinned'] = np.zeros((len(p3d_table), n_kbins))
 
     for j in range(len(p3d_table)):
+
+        k_bin_edges = np.logspace(-2, np.log10(np.max(p3d_table[k_to_be_rebinned][j])), num=n_kbins+1)
+        k_bin_centers = np.around((k_bin_edges[1:] + k_bin_edges[:-1]) / 2, 5)
     
-        p3d_table['k_parallel_rebinned'][j,:] = k_bin_centers
+        p3d_table[str(k_to_be_rebinned)+'_rebinned'][j,:] = k_bin_centers
 
         for ik_bin, k_bin in enumerate(k_bin_edges[:-1]):
 
-            select_k = (p3d_table['k_parallel'][j] > k_bin_edges[ik_bin]) & (
-                p3d_table['k_parallel'][j] <= k_bin_edges[ik_bin+1])
+            select_k = (p3d_table[k_to_be_rebinned][j] > k_bin_edges[ik_bin]) & (
+                p3d_table[k_to_be_rebinned][j] <= k_bin_edges[ik_bin+1])
 
             P3D_rebinned = np.mean(p3d_table['P3D'][j][select_k])
             error_P3D_rebinned = np.mean(p3d_table['error_P3D'][j][select_k])
@@ -157,7 +162,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
     
     k_binning: Boolean, Default to False
     Rebin P3D using wavenumber_rebin function
-    
+
     # The p3d output units will be the same as Pcross input
     
     Return:
@@ -229,7 +234,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
 
                 # Filling table
                 p3d_table['error_P3D'][ik_perp,ik_par] = error_P3D
-                    
+
     if k_binning == True:
         n_kbins = 60
         p3d_table = wavenumber_rebin(p3d_table, n_kbins)
@@ -240,7 +245,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
 
 
 def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/h', output_units='Mpc/h',
-                        interp_method='UnivariateSpline', smoothing=0, n_angsep=1000, compute_errors=False):
+                        interp_method='UnivariateSpline', smoothing=0, n_angsep=1000, compute_errors=False, k_binning=False):
     """ This function computes the P3D out of the Pcross in polar coordinates:
           - It either computes the P3D out of Pcross by direct integration over the angular separation
           - Or it interpolates the Pcross with a spline function before integration
@@ -284,6 +289,9 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
 
     compute_errors: Boolean, default: False
     Compute error_P3D or not
+
+    k_binning: Boolean, Default to False
+    Rebin P3D using wavenumber_rebin function
 
     # The p3d output units will be the same as Pcross input
 
@@ -379,6 +387,10 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
     p3d_table['P3D'] /= conversion_factor**3
     p3d_table['error_P3D'] /= conversion_factor**3
     p3d_table['k'] *= conversion_factor
+
+    if k_binning == True:
+        n_kbins = 60
+        p3d_table = wavenumber_rebin(p3d_table, n_kbins)
 
     return p3d_table
 
