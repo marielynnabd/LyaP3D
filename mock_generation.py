@@ -85,7 +85,7 @@ def generate_box(Nx, Ny, Nz, pixel_size, model='model1'):
     return grf_box
 
 
-def draw_los(grf_box, los_number, pixel_size, z_box=2.6, noise=0):
+def draw_los(grf_box, los_number, pixel_size, z_box, noise=0):
     """ Draw LOS from a box of GRF in real space and converts their cartesian coordinates to sky coordinates (ra,dec) in degree
     
     Arguments:
@@ -183,10 +183,10 @@ def draw_los(grf_box, los_number, pixel_size, z_box=2.6, noise=0):
         else:
             print('couple already exists')
 
-        if noise>0:
-            pixel_size_angstrom = (pixel_size / h) * LAMBDA_LYA * cosmo.H(z).value / SPEED_LIGHT
-            noise_per_pixel = noise * np.sqrt(1/pixel_size_angstrom)  # sigma(delta_F) ~ 1/sqrt(pixel size)
-            all_los_table['delta_los'] += np.random.normal(scale=noise_per_pixel, size=(los_number, Nz))
+    if noise>0:
+        pixel_size_angstrom = (pixel_size / h) * LAMBDA_LYA * cosmo.H(z).value / SPEED_LIGHT
+        noise_per_pixel = noise * np.sqrt(1/pixel_size_angstrom)  # sigma(delta_F) ~ 1/sqrt(pixel size)
+        all_los_table['delta_los'] += np.random.normal(scale=noise_per_pixel, size=(los_number, Nz))
 
     return all_los_table
 

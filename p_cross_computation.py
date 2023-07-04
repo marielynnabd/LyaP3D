@@ -137,12 +137,11 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     Each row corresponds to the p_cross in one angular separation bin
     """
 
-    ## TODO: cosmo/z should be args
+    ## TODO: cosmo should be args
     # Computing cosmo used for conversions
     Omega_m = 0.3153
     h = 0.7
     cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
-    z = 2.59999
     
     # Centers of angular separation bins
     ang_sep_bin_centers = np.around((ang_sep_bin_edges[1:] + ang_sep_bin_edges[:-1]) / 2, 5)
@@ -152,6 +151,9 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     
     # Parameters definitions
     delta_lambda = all_los_table['wavelength'][0][1] - all_los_table['wavelength'][0][0]
+    mean_wavelength = np.mean(all_los_table['wavelength'][0])
+    z = mean_wavelength / LAMBDA_LYA - 1
+    print("Px: z=", z)
     
     ## if we're in eBOSS case, we have log(lambda) and not lambda so a conversion is required
     if data_type == 'real':
@@ -322,18 +324,19 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     One row table corresponding to average p_auto computed in ang_sep_bin = 0
     """
     
-    ## TODO: cosmo/z should be args
+    ## TODO: cosmo should be args
     # Computing cosmo used for conversions
     Omega_m = 0.3153
     h = 0.7
     cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
-    z = 2.59999
 
     print('P_auto computation')
     
     # Parameters definitions
     delta_lambda = all_los_table['wavelength'][0][1] - all_los_table['wavelength'][0][0]
-    
+    mean_wavelength = np.mean(all_los_table['wavelength'][0])
+    z = mean_wavelength / LAMBDA_LYA - 1
+
     ## if we're in eBOSS case, we have log(lambda) and not lambda so a conversion is required [km/s]
     if data_type == 'real':
         delta_lambda *= SPEED_LIGHT * np.log(10.)
@@ -664,6 +667,7 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
         # Defining edges of angular separation bins used for next step
         # ang_sep_bin_edges = np.array([0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1])
         if radec_names == ['x', 'y']:
+            print("WARNING! converting distang with z=",z)
             ang_sep_bin_edges *= deg_to_Mpc * h
 
         # Computing the mean_p_cross for each mock
