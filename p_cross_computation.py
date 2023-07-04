@@ -272,12 +272,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
         p_cross_table['corrected_power_spectrum'][i_ang_sep, :] = corrected_p_cross
 
         if with_covmat:  #- covariance matrix:
-            covmat_p_cross = np.zeros((Nk, Nk))
-            pcross_flucts = p_cross.real - mean_p_cross
-            for i in range(Nk):
-                for j in range(Nk):
-                    covmat_p_cross[i,j] = np.mean(pcross_flucts[:,i]*pcross_flucts[:,j]) / (N_pairs - 1)
-            p_cross_table['covmat_power_spectrum'][i_ang_sep, :, :] = covmat_p_cross
+            p_cross_table['covmat_power_spectrum'][i_ang_sep, :, :] = np.cov(p_cross.real, rowvar=False)
 
     return p_cross_table
 
@@ -433,12 +428,7 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     p_auto_table['N'][0] = len(p_auto)
 
     if with_covmat:  #- covariance matrix
-        covmat_p_auto = np.zeros((Nk, Nk))
-        pauto_flucts = p_auto.real - mean_p_auto
-        for i in range(Nk):
-            for j in range(Nk):
-                covmat_p_auto[i,j] = np.mean(pauto_flucts[:,i]*pauto_flucts[:,j]) / (Nlos - 1)
-        p_auto_table['covmat_power_spectrum'][0, :, :] = covmat_p_auto
+        p_auto_table['covmat_power_spectrum'][0, :, :] = np.cov(p_auto.real, rowvar=False)
 
     return p_auto_table
 
