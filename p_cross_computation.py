@@ -153,6 +153,14 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     delta_lambda = all_los_table['wavelength'][0][1] - all_los_table['wavelength'][0][0]
     mean_wavelength = np.mean(all_los_table['wavelength'][0])
     z = mean_wavelength / LAMBDA_LYA - 1
+    
+    ## if we're in eBOSS case, we have log(lambda) and not lambda so a conversion is required [km/s]
+    if data_type == 'real':
+        mean_wavelength = np.mean(10.**(all_los_table['wavelength'][0]))
+        z = mean_wavelength / LAMBDA_LYA - 1
+        #all_los_table['wavelength'] *= SPEED_LIGHT * np.log(10.)
+        delta_lambda *= SPEED_LIGHT * np.log(10.)
+
     print("Px: z=", z)
     
     ## if we're in eBOSS case, we have log(lambda) and not lambda so a conversion is required
@@ -339,6 +347,9 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
 
     ## if we're in eBOSS case, we have log(lambda) and not lambda so a conversion is required [km/s]
     if data_type == 'real':
+        mean_wavelength = np.mean(10.**(all_los_table['wavelength'][0]))
+        z = mean_wavelength / LAMBDA_LYA - 1
+        #all_los_table['wavelength'] *= SPEED_LIGHT * np.log(10.)
         delta_lambda *= SPEED_LIGHT * np.log(10.)
 
     delta_los = all_los_table['delta_los']
