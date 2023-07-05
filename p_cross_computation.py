@@ -162,11 +162,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
         delta_lambda *= SPEED_LIGHT * np.log(10.)
 
     print("Px: z=", z)
-    
-    ## if we're in eBOSS case, we have log(lambda) and not lambda so a conversion is required
-    if data_type == 'real':
-        delta_lambda *= SPEED_LIGHT * np.log(10.)
-    
+
     delta_los = all_los_table['delta_los']
     Npix = len(delta_los[0])
     print('Npix', Npix)
@@ -528,11 +524,10 @@ def wavenumber_rebin(power_spectrum_table, n_kbins):
     power_spectrum_table['k_parallel_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
     power_spectrum_table['mean_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
     power_spectrum_table['error_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
-    try:
+    if 'resolution_correction' in power_spectrum_table.keys():
         power_spectrum_table['resolution_correction_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
+    if 'corrected_power_spectrum' in power_spectrum_table.keys():
         power_spectrum_table['corrected_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
-    except:
-        pass
 
     for j in range(len(power_spectrum_table)):
 
