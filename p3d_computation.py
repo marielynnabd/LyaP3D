@@ -56,7 +56,7 @@ def wavenumber_rebin(p3d_table, n_kbins):
             error_P3D_rebinned = np.mean(p3d_table['error_P3D'][j][select_k])
             
             p3d_table['P3D_rebinned'][j,ik_bin] = P3D_rebinned 
-            p3d_table['error_P3D_rebinned'][j,ik_bin] = error_P3D_rebinned
+            p3d_table['error_P3D_rebinned'][j,ik_bin] = error_P3D_rebinned / np.sqrt(np.sum(select_k))
 
     return p3d_table
 
@@ -120,7 +120,7 @@ def _pcross_interpolated(pcross_table, angular_separation_array, n_angsep=1000,
 
 def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular,
                   mean_redshift, interp_method='UnivariateSpline', smoothing=0, n_angsep=1000,
-                  compute_errors=False, k_binning=False):
+                  compute_errors=False, k_binning=False, n_kbins = 30):
     """ This function computes the P3D out of the Pcross in cartesian coordinates:
           - It either computes the P3D out of Pcross by direct integration over the angular separation
           - Or it interpolates the Pcross with a spline function before integration
@@ -162,6 +162,9 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
     
     k_binning: Boolean, Default to False
     Rebin P3D using wavenumber_rebin function
+    
+    n_kbins: Integer
+    Number of wavenumber bins if k_binning
 
     # The p3d output units will be the same as Pcross input
     
@@ -236,7 +239,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
                 p3d_table['error_P3D'][ik_perp,ik_par] = error_P3D
 
     if k_binning == True:
-        n_kbins = 60
+        # n_kbins = 30
         p3d_table = wavenumber_rebin(p3d_table, n_kbins)
         # rebin_factor = 2
         # p3d_table = wavenumber_rebin(p3d_table, rebin_factor)
@@ -245,7 +248,8 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
 
 
 def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/h', output_units='Mpc/h',
-                        interp_method='UnivariateSpline', smoothing=0, n_angsep=1000, compute_errors=False, k_binning=False):
+                        interp_method='UnivariateSpline', smoothing=0, n_angsep=1000, compute_errors=False, 
+                        k_binning=False, n_kbins = 30):
     """ This function computes the P3D out of the Pcross in polar coordinates:
           - It either computes the P3D out of Pcross by direct integration over the angular separation
           - Or it interpolates the Pcross with a spline function before integration
@@ -292,6 +296,9 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
 
     k_binning: Boolean, Default to False
     Rebin P3D using wavenumber_rebin function
+    
+    n_kbins: Integer
+    Number of wavenumber bins if k_binning
 
     # The p3d output units will be the same as Pcross input
 
@@ -389,7 +396,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
     p3d_table['k'] *= conversion_factor
 
     if k_binning == True:
-        n_kbins = 60
+        # n_kbins = 30
         p3d_table = wavenumber_rebin(p3d_table, n_kbins)
 
     return p3d_table
