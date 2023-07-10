@@ -53,10 +53,10 @@ def wavenumber_rebin(p3d_table, n_kbins):
                 p3d_table[k_to_be_rebinned][j] <= k_bin_edges[ik_bin+1])
 
             P3D_rebinned = np.mean(p3d_table['P3D'][j][select_k])
-            error_P3D_rebinned = np.mean(p3d_table['error_P3D'][j][select_k])
+            error_P3D_rebinned = np.mean(p3d_table['error_P3D'][j][select_k]) / np.sqrt(np.sum(select_k))
             
             p3d_table['P3D_rebinned'][j,ik_bin] = P3D_rebinned 
-            p3d_table['error_P3D_rebinned'][j,ik_bin] = error_P3D_rebinned / np.sqrt(np.sum(select_k))
+            p3d_table['error_P3D_rebinned'][j,ik_bin] = error_P3D_rebinned
 
     return p3d_table
 
