@@ -18,65 +18,13 @@ from picca.constants import SPEED_LIGHT # in km/s
 lambda_lya = 1215.67 # Angstrom
 
 
-# def init_p_linear(k_max):
-#     """ Runs CLASS for a given k_max
-    
-#     Arguments:
-#     ----------
-#     k_max: Float, units: [1/Mpc]
-#     Max wavenumber we want to reach, units forced by units required in CLASS
-    
-#     Return:
-#     -------
-#     p_linear: 2D array
-#     First array is the p_linear in [(Mpc/h)^3], second array is the k_array in [h/Mpc]
-#     """
-    
-#     k_max *= 2
-    
-#     # Specifying the cosmological parameters
-#     h = 0.7 #H0/100
-#     Omega_b = 0.02237/(h**2)
-#     Omega_m =  0.3153
-#     Omega_cdm = 0.1198/(h**2)
-#     A_s = np.exp(3.043)*(1e-10)
-#     n_s =  0.9652
-    
-#     # Create a params dictionary
-#     params = {
-#                  'output':'mPk',
-#                  'non linear':'halofit',
-#                  'Omega_b':Omega_b,
-#                  'Omega_cdm':Omega_cdm,
-#                  'h':h,
-#                  'A_s':A_s,
-#                  'n_s':n_s,
-#                  'P_k_max_1/Mpc':k_max,
-#                  'z_max_pk':10. #Default value is 10
-#     }
-    
-#     # Computation
-#     cosmo = Class()
-#     cosmo.set(params)
-#     cosmo.compute()
-#     k_array = np.logspace(-5, np.log10(k_max), num=1000) #Mpc^-1
-#     p_linear = np.array([cosmo.pk_lin(ki, 2.5) for ki in k_array])
-    
-#     # NOTE: Need to convert these to h/Mpc and (Mpc/h)^3 since h_units=false
-#     p_linear *= h**3
-#     k_array /= h
-#     p_k_linear = [k_array, p_linear]
-    
-#     return p_k_linear
-
-
 def init_p_linear(k_max, z, input_params=None):
     """ Runs CLASS for a given k_max
     
     Arguments:
     ----------
-    k_max: Float, units: [1/Mpc]
-    Max wavenumber we want to reach, units forced by units required in CLASS
+    k_max: Float, units: [h/Mpc]
+    Max wavenumber we want to reach.
     
     input_params: Dictionary, Default to None which corresponds to using the params hardcoded in the function
     Cosmological parameters used for p_linear computation. Must check class documentation for params specification.
@@ -84,11 +32,9 @@ def init_p_linear(k_max, z, input_params=None):
     Return:
     -------
     p_linear: 2D array
-    First array is the p_linear in [(Mpc/h)^3], second array is the k_array in [h/Mpc]
+    First array is the p_linear in [(Mpc/h)^3], second array is the k_array in [h/Mpc].
     """
-    
-    k_max *= 2
-    
+
     if input_params is not None:
         params = input_params
         h = params['h']
@@ -104,26 +50,25 @@ def init_p_linear(k_max, z, input_params=None):
         # Create a params dictionary
         params = {
                      'output':'mPk',
-                     'non linear':'halofit',
+                     'non linear':'halofit', #emulation of the non linear ps shape (not needed here bcz the desired output is p_linear)
                      'Omega_b':Omega_b,
                      'Omega_cdm':Omega_cdm,
                      'h':h,
                      'A_s':A_s,
                      'n_s':n_s,
-                     'P_k_max_1/Mpc':k_max,
+                     'P_k_max_h/Mpc':k_max * 2, # Only here k_max must be multiplied by 2
                      'z_max_pk':10. # Default value is 10
         }
 
     # Computation
     cosmo = Class()
     cosmo.set(params)
+    print(cosmo.pars)
     cosmo.compute()
-    k_array = np.logspace(-5, np.log10(k_max), num=1000) #Mpc^-1
+    k_array = np.logspace(-5, np.log10(k_max), num=1000) # h Mpc^-1
+    print(np.max(k_array))
     p_linear = np.array([cosmo.pk_lin(ki, z) for ki in k_array])
-    
-    # NOTE: Need to convert these to h/Mpc and (Mpc/h)^3 since h_units=false
-    p_linear *= h**3
-    k_array /= h
+
     p_k_linear = [k_array, p_linear]
     
     return p_k_linear
