@@ -1,4 +1,4 @@
-""" This module provides a set of functions to get P3D from Pcross computed on data """
+""" Functions to read eBOSS spectra files (DR16), creating a los_table to be used later by the pipeline """
 
 import numpy as np
 import os, sys, glob
