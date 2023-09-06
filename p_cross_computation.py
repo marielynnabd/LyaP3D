@@ -379,7 +379,7 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
     """ - This function computes mean_power_spectrum: 
             - Takes all_los_table and pairs (1 mock)
             - Computes mean_p_auto and mean_p_cross using above functions
-            - Stacks them both in one table called mock_mean_power_spectrum
+            - Stacks them both in one table called mean_power_spectrum
 
     Arguments:
     ----------
@@ -387,7 +387,7 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
     
     Return:
     -------
-    mean_power_spectrum_table: Table
+    mean_power_spectrum: Table
     Each row corresponds to the computed power spectrum in an angular spearation bin
     """
 
@@ -406,9 +406,9 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
                                        with_covmat=with_covmat,
                                        p_noise=p_noise,
                                        data_type=data_type, units=units)
-    mock_mean_power_spectrum = vstack([p_auto_table, p_cross_table])
+    mean_power_spectrum = vstack([p_auto_table, p_cross_table])
     
-    return mock_mean_power_spectrum
+    return mean_power_spectrum
 
 
 def wavenumber_rebin(power_spectrum_table, n_kbins):
