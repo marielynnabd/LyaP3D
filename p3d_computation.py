@@ -28,7 +28,7 @@ def wavenumber_rebin_p3d(p3d_table, n_kbins):
     Same table as in input, but with rebinned p3d columns added to the table
     """
 
-    if 'k' in p3d_table.keys():
+    if 'k' in p3d_table.keys(): # When P3D is in polar coordinates
         k_to_be_rebinned = 'k'
     else:
         k_to_be_rebinned = 'k_parallel'
