@@ -135,10 +135,12 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     p_cross_table['k_parallel'] = np.zeros((n_ang_sep_bins, Nk))
     p_cross_table['mean_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
     p_cross_table['error_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
-    if with_covmat:
-        p_cross_table['covmat_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk, Nk))
     p_cross_table['resolution_correction'] = np.zeros((n_ang_sep_bins, Nk))
     p_cross_table['corrected_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
+    p_cross_table['error_corrected_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
+    if with_covmat:
+        p_cross_table['covmat_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk, Nk))
+        p_cross_table['covmat_corrected_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk, Nk))
 
     # p_cross computation
     for i_ang_sep, ang_sep in enumerate(ang_sep_bin_edges[:-1]):
@@ -192,22 +194,24 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
         mean_p_cross = np.zeros(Nk)
         mean_resolution_correction_p_cross = np.zeros(Nk)
         error_p_cross = np.zeros(Nk)
-        corrected_p_cross = np.zeros(Nk)
 
         for i in range(Nk):
             mean_p_cross[i] = np.mean(p_cross.real[:,i])
             error_p_cross[i] = np.std(p_cross.real[:,i]) / np.sqrt(N_pairs - 1)
             mean_resolution_correction_p_cross[i] = np.mean(resolution_correction_p_cross[:,i])
-            corrected_p_cross[i] = mean_p_cross[i] / mean_resolution_correction_p_cross[i]
 
         p_cross_table['k_parallel'][i_ang_sep, :] = k_parallel
         p_cross_table['mean_power_spectrum'][i_ang_sep, :] = mean_p_cross  
         p_cross_table['error_power_spectrum'][i_ang_sep, :] = error_p_cross
         p_cross_table['resolution_correction'][i_ang_sep, :] = mean_resolution_correction_p_cross
-        p_cross_table['corrected_power_spectrum'][i_ang_sep, :] = corrected_p_cross
+        p_cross_table['corrected_power_spectrum'][i_ang_sep, :] = mean_p_cross / mean_resolution_correction_p_cross
+        p_cross_table['error_corrected_power_spectrum'][i_ang_sep, :] = error_p_cross / mean_resolution_correction_p_cross
 
         if with_covmat:  #- covariance matrix:
-            p_cross_table['covmat_power_spectrum'][i_ang_sep, :, :] = np.cov(p_cross.real, rowvar=False)
+            covmat = np.cov(p_cross.real, rowvar=False)
+            p_cross_table['covmat_power_spectrum'][i_ang_sep, :, :] = covmat
+            p_cross_table['covmat_corrected_power_spectrum'][i_ang_sep, :, :] = covmat / np.outer(
+                mean_resolution_correction_p_cross, mean_resolution_correction_p_cross)  # cov_ij / Wi*Wj
 
     return p_cross_table
 
@@ -313,11 +317,13 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     p_auto_table['k_parallel'] = np.zeros((1, Nk))
     p_auto_table['mean_power_spectrum'] = np.zeros((1, Nk))
     p_auto_table['error_power_spectrum'] = np.zeros((1, Nk))
-    if with_covmat:
-        p_auto_table['covmat_power_spectrum'] = np.zeros((1, Nk, Nk))
     p_auto_table['resolution_correction'] = np.zeros((1, Nk))
     p_auto_table['corrected_power_spectrum'] = np.zeros((1, Nk))
-    
+    p_auto_table['error_corrected_power_spectrum'] = np.zeros((1, Nk))
+    if with_covmat:
+        p_auto_table['covmat_power_spectrum'] = np.zeros((1, Nk, Nk))
+        p_auto_table['covmat_corrected_power_spectrum'] = np.zeros((1, Nk, Nk))
+
     # p_auto computation in Angstrom units
     p_auto = (fft_delta.real**2 + fft_delta.imag**2) * delta_lambda / Npix # same units as delta_lambda
     k_parallel = 2 * np.pi * np.fft.rfftfreq(Npix, delta_lambda) # same units as delta_lambda
@@ -352,22 +358,24 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     mean_p_auto = np.zeros(Nk)
     error_p_auto = np.zeros(Nk)
     mean_resolution_correction_p_auto = np.zeros(Nk)
-    corrected_p_auto = np.zeros(Nk)
     for i in range(Nk):
         mean_p_auto[i] = np.mean(p_auto[:, i])
         error_p_auto[i] = np.std(p_auto[:, i]) / np.sqrt(Nlos - 1)
         mean_resolution_correction_p_auto[i] = np.mean(resolution_correction_p_auto[:, i])
-        corrected_p_auto[i] = (mean_p_auto[i] - p_noise) / mean_resolution_correction_p_auto[i]
 
     p_auto_table['k_parallel'][0, :] = k_parallel
     p_auto_table['mean_power_spectrum'][0, :] = mean_p_auto  
     p_auto_table['error_power_spectrum'][0, :] = error_p_auto
     p_auto_table['resolution_correction'][0, :] = mean_resolution_correction_p_auto
-    p_auto_table['corrected_power_spectrum'][0, :] = corrected_p_auto
+    p_auto_table['corrected_power_spectrum'][0, :] = (mean_p_auto - p_noise) / mean_resolution_correction_p_auto
+    p_auto_table['error_corrected_power_spectrum'][0, :] = error_p_auto / mean_resolution_correction_p_auto
     p_auto_table['N'][0] = len(p_auto)
 
     if with_covmat:  #- covariance matrix
-        p_auto_table['covmat_power_spectrum'][0, :, :] = np.cov(p_auto.real, rowvar=False)
+        covmat = np.cov(p_auto.real, rowvar=False)
+        p_auto_table['covmat_power_spectrum'][0, :, :] = covmat
+        p_auto_table['covmat_corrected_power_spectrum'][0, :, :] = covmat / np.outer(
+                mean_resolution_correction_p_auto, mean_resolution_correction_p_auto)  # cov_ij / Wi*Wj
 
     return p_auto_table
 
@@ -497,8 +505,11 @@ def wavenumber_rebin(power_spectrum_table, n_kbins):
             try:
                 resolution_correction_rebinned = np.mean(power_spectrum_table['resolution_correction'][j][select_k])
                 corrected_power_spectrum_rebinned = np.mean(power_spectrum_table['corrected_power_spectrum'][j][select_k])
+                error_corrected_power_spectrum_rebinned = np.mean(
+                    power_spectrum_table['error_corrected_power_spectrum'][j][select_k]) / np.sqrt(np.sum(select_k))
                 power_spectrum_table['resolution_correction_rebinned'][j,ik_bin] = resolution_correction_rebinned
                 power_spectrum_table['corrected_power_spectrum_rebinned'][j,ik_bin] = corrected_power_spectrum_rebinned
+                power_spectrum_table['error_corrected_power_spectrum_rebinned'][j,ik_bin] = error_corrected_power_spectrum_rebinned
             except:
                 pass
 

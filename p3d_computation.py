@@ -85,17 +85,24 @@ def _pcross_interpolated(pcross_table, angular_separation_array, n_angsep=1000,
     try:
         Pcross = np.array(pcross_table['corrected_power_spectrum'])
     except:
+        print("Warning, no corrected_power_spectrum in pcross_table.")  # this should never happen now?
         Pcross = np.array(pcross_table['mean_power_spectrum'])
 
     # Add fluctuations
     if add_noise:
-        if 'covmat_power_spectrum' in pcross_table.keys():
+        if any([x in pcross_table.keys() for x in ['covmat_power_spectrum', 'covmat_corrected_power_spectrum']]):
             # One covariance matrix per angular separation bin:
             for i_angsep in range(len(angular_separation_array)):
-                covmat = np.array(pcross_table['covmat_power_spectrum'][i_angsep,:,:])
+                try:
+                    covmat = np.array(pcross_table['covmat_corrected_power_spectrum'][i_angsep,:,:])
+                except:
+                    covmat = np.array(pcross_table['covmat_power_spectrum'][i_angsep,:,:])
                 Pcross[i_angsep,:] = np.random.multivariate_normal(Pcross[i_angsep,:], covmat)
         else:
-            error_Pcross = np.array(pcross_table['error_power_spectrum'])
+            try:
+                error_Pcross = np.array(pcross_table['error_corrected_power_spectrum'])
+            except:
+                error_Pcross = np.array(pcross_table['error_power_spectrum'])
             Pcross = np.random.normal(Pcross, error_Pcross)
 
     Pcross_interpolated = np.zeros( (n_angsep, len(k_parallel)) )
