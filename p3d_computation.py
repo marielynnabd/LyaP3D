@@ -11,17 +11,14 @@ from astropy.cosmology import FlatLambdaCDM
 from tools import rebin_vector, SPEED_LIGHT, LAMBDA_LYA
 
 
-def wavenumber_rebin(p3d_table, n_kbins):
+def wavenumber_rebin_p3d(p3d_table, n_kbins):
     """ This function rebins the 3D power spectrum into k_parallel bins
     
     Arguments:
     ----------
     p3d_table: Table
     Table of P3D
-    
-    # rebin_factor: Integer
-    # Rebin factor
-    
+
     n_kbins: Integer
     Number of k bins we want after rebinning
     
@@ -64,12 +61,41 @@ def wavenumber_rebin(p3d_table, n_kbins):
 def _pcross_interpolated(pcross_table, angular_separation_array, n_angsep=1000,
                         interp_method='UnivariateSpline', smoothing=0,
                         add_noise=False):
-    #- Compute Pcross_interpolated(kpar, angsep)
-    #      add_noise: if True, add gaussian fluctuations on top of Pcross
-    #      (used to propagate Px error bars to P3D)
-    #      other args are described in main routines
+    """ This function computes Pcross_interpolated(kpar, angsep)
 
-    # reading k_parallel from pcross_table
+    Arguments:
+    ----------
+    pcross_table: Table
+    Table of Pcross as function of K_parallel for different angular separation bins.
+
+    angular_separation_array: Array
+    Array of angular separations
+
+    n_angsep: Integer, Default 1000
+    Number of angular separations desired for fine binning
+
+    interp_method: String, Default: 'UnivariateSpline'
+    Pcross interpolation method, before P3D computation
+    Options: - 'UnivariateSpline': interpolating using scipy.interpolate.UnivariateSpline function
+             - 'PchipInterpolator': interpolating using scipy.interpolate.PchipInterpolator function
+             - 'none': no interpolation, compute integral directly on Pcross output
+
+    smoothing: Float, Default: 0
+    The value of smoothing if 'spline interpolation method' only
+
+    add_noise: Boolean, Default to False
+    If True: add gaussian fluctuations on top of Pcross (used to propagate Px error bars to P3D)
+
+    Return:
+    -------
+    angular_separation_array_fine_binning: Array
+    Array of angular separations with a fine binning used in the interpolation
+
+    Pcross_interpolated: Array
+    Array of interpolated Pcross
+    """
+
+    # Reading k_parallel from pcross_table
     k_parallel = np.array(pcross_table['k_parallel'][0])
 
     # Define a thinner binning of angular separations
@@ -144,7 +170,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
     k_peprendicular: Array
     Array of k_perpandicular we want to use, either in [Mpc/h]^-1 or [degree]^-1, must be specified in the following argument
     
-    units_k_perpandicular: String, default: '[Mpc/h]^-1'
+    units_k_perpandicular: String, Default: '[Mpc/h]^-1'
     Units of input k_perpandicular
     Options: - '[Mpc/h]^-1': usually in the case of mocks
              - '[degree]^-1': usually in the case of real data
@@ -152,23 +178,23 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
     mean_redshift: Float
     Central redshift value
     
-    interp_method: String, default: 'UnivariateSpline'
+    interp_method: String, Default: 'UnivariateSpline'
     Pcross interpolation method, before P3D computation
     Options: - 'UnivariateSpline': interpolating using scipy.interpolate.UnivariateSpline function
              - 'PchipInterpolator': interpolating using scipy.interpolate.PchipInterpolator function
              - 'none': no interpolation, compute integral directly on Pcross output
              
-    smoothing: Float, default: 0
+    smoothing: Float, Default: 0
     The value of smoothing if 'spline interpolation method' only
     
-    n_angsep: Float, default: 1000
+    n_angsep: Float, Default: 1000
     Number of angular separation bins for angular_separation_fine_binning_array required for interpolation methods only
 
-    compute_errors: Boolean, default: False
+    compute_errors: Boolean, Default: False
     Compute error_P3D or not
     
     k_binning: Boolean, Default to False
-    Rebin P3D using wavenumber_rebin function
+    Rebin P3D using wavenumber_rebin_p3d function
     
     n_kbins: Integer
     Number of wavenumber bins if k_binning
@@ -246,10 +272,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
                 p3d_table['error_P3D'][ik_perp,ik_par] = error_P3D
 
     if k_binning == True:
-        # n_kbins = 30
-        p3d_table = wavenumber_rebin(p3d_table, n_kbins)
-        # rebin_factor = 2
-        # p3d_table = wavenumber_rebin(p3d_table, rebin_factor)
+        p3d_table = wavenumber_rebin_p3d(p3d_table, n_kbins)
 
     return p3d_table
 
@@ -286,13 +309,13 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
              - 'km/s'
              - 'Angstrom'
 
-    interp_method: String, default: 'UnivariateSpline'
+    interp_method: String, Default: 'UnivariateSpline'
     Pcross interpolation method, before P3D computation
     Options: - 'UnivariateSpline': interpolating using scipy.interpolate.UnivariateSpline function
              - 'PchipInterpolator': interpolating using scipy.interpolate.PchipInterpolator function
              - 'none': no interpolation, compute integral directly on Pcross output
 
-    smoothing: Float, default: 0
+    smoothing: Float, Default: 0
     The value of smoothing if 'spline interpolation method' only
 
     n_angsep: Float, default: 1000
@@ -302,7 +325,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
     Compute error_P3D or not
 
     k_binning: Boolean, Default to False
-    Rebin P3D using wavenumber_rebin function
+    Rebin P3D using wavenumber_rebin_p3d function
     
     n_kbins: Integer
     Number of wavenumber bins if k_binning
@@ -403,8 +426,7 @@ def pcross_to_p3d_polar(pcross_table, mu_array, mean_redshift, input_units='Mpc/
     p3d_table['k'] *= conversion_factor
 
     if k_binning == True:
-        # n_kbins = 30
-        p3d_table = wavenumber_rebin(p3d_table, n_kbins)
+        p3d_table = wavenumber_rebin_p3d(p3d_table, n_kbins)
 
     return p3d_table
 
