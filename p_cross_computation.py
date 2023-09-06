@@ -18,7 +18,7 @@ from pairs_computation import compute_pairs
 def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_snr_p_cross=None, max_resolution_p_cross=None,
                          resolution_correction=False, reshuffling=False, with_covmat=True, data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for pairs with angular separations > 0 (called cross power spectrum):
-          - Takes mock and corresponfing los_pairs_table
+          - Takes mock and corresponding los_pairs_table
           _ Computes cross power spectrum for each pair
           - Averages over all of them to get one p_cross(k_parallel) per angular separation bin
     
@@ -145,8 +145,8 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     # p_cross computation
     for i_ang_sep, ang_sep in enumerate(ang_sep_bin_edges[:-1]):
         print('angular separation bin edges', ang_sep_bin_edges[i_ang_sep], ang_sep_bin_edges[i_ang_sep+1], 
-              'corresponging center', ang_sep_bin_centers[i_ang_sep])
-        
+              'corresponding center', ang_sep_bin_centers[i_ang_sep])
+
         select = (los_pairs_table['ang_separation'] > ang_sep_bin_edges[i_ang_sep]) & (
                 los_pairs_table['ang_separation'] <= ang_sep_bin_edges[i_ang_sep+1])
 
@@ -640,7 +640,7 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
 
     return all_mocks_mean_power_spectrum
 
-# Commented because we don't do the analysis on many mock realizations right now
+# Commented because we don't do the analysis on many mock realizations right now and must be updated
 #     # Mean over all mocks
 #     N_mocks = len(files)
 #     if N_mocks == 1:
