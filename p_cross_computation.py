@@ -10,13 +10,14 @@ from astropy.table import Table, vstack
 from multiprocessing import Pool
 from astropy.cosmology import FlatLambdaCDM
 
-from tools import rebin_vector, SPEED_LIGHT, LAMBDA_LYA
+from tools import rebin_vector, SPEED_LIGHT, LAMBDA_LYA, eliminate_outlyers
 from eBOSS_dr16_analysis import boss_resolution_correction
 from pairs_computation import compute_pairs
 
 
 def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_snr_p_cross=None, max_resolution_p_cross=None,
-                         resolution_correction=False, reshuffling=False, with_covmat=True, data_type='mocks', units='Angstrom'):
+                         resolution_correction=False, reshuffling=False, with_covmat=True,
+                         remove_outlyers=False, data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for pairs with angular separations > 0 (called cross power spectrum):
           - Takes mock and corresponding los_pairs_table
           _ Computes cross power spectrum for each pair
@@ -25,13 +26,13 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     Arguments:
     ----------
     all_los_table: Table
-    Mock
+    Mock.
     
     los_pairs_table: Table
-    Each row corresponds to the indices of the pixels forming the pair, and the angular separation between them
+    Each row corresponds to the indices of the pixels forming the pair, and the angular separation between them.
     
     ang_sep_bin_edges: Array of floats
-    Edges of the angular separation bins we want to use
+    Edges of the angular separation bins we want to use.
     
     min_snr_p_cross: Float, Default is None
     The value of minimum snr desired.
@@ -46,7 +47,10 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     This is done in case we want to compute a cross spectrum wihout signal, ie. by correlating pixels that aren't correlated.
     
     with_covmat: Boolean, Default is True
-    Switch on/off covariance matrix computation
+    Switch on/off covariance matrix computation.
+
+    remove_outlyers: Boolean, Default to False
+    Remove all individual p_cross at (m_sigma * sigma) from the mean.
     
     data_type: String, Options: 'mocks', 'real'
     The type of data set on which we want to run the cross power spectrum computation.
@@ -63,7 +67,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     Return:
     -------
     p_cross_table: Table
-    Each row corresponds to the p_cross in one angular separation bin
+    Each row corresponds to the p_cross in one angular separation bin.
     """
 
     ## TODO: cosmo should be args
@@ -196,8 +200,16 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
         error_p_cross = np.zeros(Nk)
 
         for i in range(Nk):
-            mean_p_cross[i] = np.mean(p_cross.real[:,i])
-            error_p_cross[i] = np.std(p_cross.real[:,i]) / np.sqrt(N_pairs - 1)
+
+            p_cross_array = np.array(p_cross[:,i])
+
+            ## If we want to remove outlyers of Pcross beforer averaging, might be removed later
+            if remove_outlyers == True:
+                m_sigma = 5
+                p_cross_array = eliminate_outlyers(p_cross_array.real, m_sigma)
+
+            mean_p_cross[i] = np.mean(p_cross_array.real)
+            error_p_cross[i] = np.std(p_cross_array.real) / np.sqrt(N_pairs - 1)
             mean_resolution_correction_p_cross[i] = np.mean(resolution_correction_p_cross[:,i])
 
         p_cross_table['k_parallel'][i_ang_sep, :] = k_parallel
@@ -217,7 +229,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
 
 
 def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_auto=None, resolution_correction=True, 
-                        p_noise=0, with_covmat=True, data_type='mocks', units='Angstrom'):
+                        p_noise=0, with_covmat=True, remove_outlyers=False, data_type='mocks', units='Angstrom'):
     """ This function computes mean power spectrum for angular separation = 0 (Lya forest and itself, called auto power spectrum):
           - Takes all_los_table
           - Computes auto power spectrum for each LOS 
@@ -243,6 +255,9 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     with_covmat: Boolean, Default is True
     Switch on/off covariance matrix computation
     
+    remove_outlyers: Boolean, Default to False
+    Remove all individual p_cross at (m_sigma * sigma) from the mean.
+
     data_type: String, Options: 'mocks', 'real'
     The type of data set on which we want to run the auto power spectrum computation.
         - In the case of mocks: The auto power spectrum will be computed in [Angstrom] by default,
@@ -353,15 +368,25 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
 
     else:
         resolution_correction_p_auto = np.ones((Nlos, len(k_parallel)))
-               
+
     # mean_p_auto computation
     mean_p_auto = np.zeros(Nk)
     error_p_auto = np.zeros(Nk)
     mean_resolution_correction_p_auto = np.zeros(Nk)
+
     for i in range(Nk):
-        mean_p_auto[i] = np.mean(p_auto[:, i])
-        error_p_auto[i] = np.std(p_auto[:, i]) / np.sqrt(Nlos - 1)
+
+        p_auto_array = np.array(p_auto[:,i])
+
+        ## If we want to remove outlyers of Pcross beforer averaging, might be removed later
+        if remove_outlyers == True:
+            m_sigma = 5
+            p_auto_array = eliminate_outlyers(p_auto_array, m_sigma)
+
+        mean_p_auto[i] = np.mean(p_auto_array)
+        error_p_auto[i] = np.std(p_auto_array) / np.sqrt(Nlos - 1)
         mean_resolution_correction_p_auto[i] = np.mean(resolution_correction_p_auto[:, i])
+
 
     p_auto_table['k_parallel'][0, :] = k_parallel
     p_auto_table['mean_power_spectrum'][0, :] = mean_p_auto  
@@ -380,10 +405,11 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     return p_auto_table
 
 
-def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type='mocks', 
+def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type='mocks',
                                 units='Angstrom', p_noise=0, min_snr_p_cross=None, min_snr_p_auto=None,
-                                max_resolution_p_cross=None, max_resolution_p_auto=None, 
-                                resolution_correction=False, reshuffling=False, with_covmat=True):
+                                max_resolution_p_cross=None, max_resolution_p_auto=None,
+                                resolution_correction=False, reshuffling=False, with_covmat=True,
+                                remove_outlyers=False):
     """ - This function computes mean_power_spectrum: 
             - Takes all_los_table and pairs (1 mock)
             - Computes mean_p_auto and mean_p_cross using above functions
@@ -406,12 +432,15 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
                                          resolution_correction=resolution_correction,
                                          reshuffling=reshuffling,
                                          with_covmat=with_covmat,
+                                         remove_outlyers=remove_outlyers,
                                          data_type=data_type, units=units)
+
     p_auto_table = compute_mean_p_auto(all_los_table=all_los_table, 
                                        min_snr_p_auto=min_snr_p_auto, 
                                        max_resolution_p_auto=max_resolution_p_auto,
                                        resolution_correction=resolution_correction,
                                        with_covmat=with_covmat,
+                                       remove_outlyers=remove_outlyers,
                                        p_noise=p_noise,
                                        data_type=data_type, units=units)
     mean_power_spectrum = vstack([p_auto_table, p_cross_table])
@@ -477,9 +506,11 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins):
 
 def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_edges, n_kbins, p_noise=0,
                                     min_snr_p_cross=None, min_snr_p_auto=None,
-                                    max_resolution_p_cross=None, max_resolution_p_auto=None, 
+                                    max_resolution_p_cross=None, max_resolution_p_auto=None,
                                     resolution_correction=False, reshuffling=False, with_covmat=True,
-                                    k_binning=False, data_type='mocks', units='Angstrom', 
+                                    k_binning=False, data_type='mocks',
+                                    remove_outlyers=False,
+                                    units='Angstrom',
                                     radec_names=['ra', 'dec']): 
     """ - This function computes all_mocks_mean_power_spectrum:
             - Takes all mocks or one mock
@@ -585,7 +616,8 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
                                                                max_resolution_p_auto=max_resolution_p_auto, 
                                                                resolution_correction=resolution_correction, 
                                                                reshuffling=reshuffling,
-                                                               with_covmat=with_covmat)
+                                                               with_covmat=with_covmat,
+                                                              remove_outlyers=remove_outlyers)
 
         # Stacking power spectra of all mocks in one table
         all_mocks_mean_power_spectrum = vstack([all_mocks_mean_power_spectrum, mock_mean_power_spectrum])  
