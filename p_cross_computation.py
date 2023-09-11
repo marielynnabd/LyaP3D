@@ -468,10 +468,10 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins, k_scale):
     Same table as in input, but with rebinned power spectrum columns added to the table
     """
 
-    if k_scale == 'log':
+    if k_scale == 'log': # Used in mocks case
         k_bin_edges = np.logspace(-2, np.log10(np.max(power_spectrum_table['k_parallel'][0])), 
-                                  num=n_kbins) # same units as k_parallel
-    else:
+                                  num=n_kbins)
+    else: # Used in data case
         k_bin_edges = np.linspace(np.min(power_spectrum_table['k_parallel'][0]), 
                                   np.max(power_spectrum_table['k_parallel'][0]), num=n_kbins)
 
@@ -485,6 +485,8 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins, k_scale):
         power_spectrum_table['resolution_correction_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
     if 'corrected_power_spectrum' in power_spectrum_table.keys():
         power_spectrum_table['corrected_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table), len(k_bin_centers)))
+        power_spectrum_table['error_corrected_power_spectrum_rebinned'] = np.zeros((len(power_spectrum_table),
+                                                                                    len(k_bin_centers)))
 
     for j in range(len(power_spectrum_table)):
 
@@ -632,9 +634,14 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
         all_mocks_mean_power_spectrum = vstack([all_mocks_mean_power_spectrum, mock_mean_power_spectrum])  
         
     if k_binning:
+        if data_type == 'mocks':
+            k_scale = 'log'
+        else:
+            k_scale = 'real'
+
         print('Wavenumber rebinning')
         all_mocks_mean_power_spectrum = wavenumber_rebin_power_spectrum(power_spectrum_table=all_mocks_mean_power_spectrum, 
-                                                         n_kbins=n_kbins)
+                                                         n_kbins=n_kbins, k_scale=k_scale)
 
     return all_mocks_mean_power_spectrum
 
