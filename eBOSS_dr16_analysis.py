@@ -83,7 +83,11 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
     los_table['dec'] = np.ones(n_hdu) * np.nan
     los_table['delta_los'] = np.zeros((n_hdu, len(wavelength_ref)))
     los_table['wavelength'] = np.zeros((n_hdu, len(wavelength_ref)))
-    los_table['THING_ID'] = np.ones(n_hdu, dtype='>i8') * np.nan
+    los_table['THING_ID'] = np.zeros(n_hdu, dtype='>i8')
+    los_table['PLATE'] = np.zeros(n_hdu, dtype='>i4')
+    los_table['MJD'] = np.zeros(n_hdu, dtype='>i4')
+    los_table['FIBERID'] = np.zeros(n_hdu, dtype='>i4')
+
     if include_snr_reso:
         los_table['MEANRESOLUTION'] = np.zeros(n_hdu)
         los_table['MEANSNR'] = np.zeros(n_hdu)
@@ -114,6 +118,10 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
                     los_table[i]['dec'] = delta_i_header['DEC'] * 180 / np.pi
                     los_table[i]['delta_los'] = delta_los_interpolated
                     los_table[i]['wavelength'] = wavelength_ref
+                    los_table[i]['THING_ID'] = delta_ID
+                    los_table[i]['PLATE'] = delta_i_header['PLATE']
+                    los_table[i]['MJD'] = delta_i_header['MJD']
+                    los_table[i]['FIBERID'] = delta_i_header['FIBERID']
 
                 # Checking that the masked wavelength and wavelength_ref have the same shape
                 # otherwise it means that there are masked pixels
@@ -126,6 +134,9 @@ def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
                         los_table[i]['delta_los'] = delta_los[mask_wavelength]
                         los_table[i]['wavelength'] = wavelength[mask_wavelength]
                         los_table[i]['THING_ID'] = delta_ID
+                        los_table[i]['PLATE'] = delta_i_header['PLATE']
+                        los_table[i]['MJD'] = delta_i_header['MJD']
+                        los_table[i]['FIBERID'] = delta_i_header['FIBERID']
 
                     else:
                         print('Warning')  # should not happen in principle
