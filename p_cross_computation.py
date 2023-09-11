@@ -500,7 +500,7 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
                                     min_snr_p_cross=None, min_snr_p_auto=None,
                                     max_resolution_p_cross=None, max_resolution_p_auto=None,
                                     resolution_correction=False, reshuffling=False, with_covmat=True,
-                                    k_binning=False, data_type='mocks',
+                                    k_binning=False, k_scale, data_type='mocks',
                                     units='Angstrom',
                                     radec_names=['ra', 'dec']): 
     """ - This function computes all_mocks_mean_power_spectrum:
@@ -521,15 +521,15 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
     
     ang_sep_bin_edges: Array
     Array of angular separation bin edges
-    
-    n_kbins: Integer
-    Number of wavenumber bins if k_binning
-    
+
     min_snr_p_cross, min_snr_p_auto: Floats, Defaults are None
     The values of minimum snr required for both p_cross and p_auto computation.
     
     k_binning: Boolean, Default to False
     Rebin power spectrum using wavenumber_rebin_power_spectrum function
+    
+    k_scale: String
+    Scale of wavenumber array to be rebinned if k_binning. Options: 'linear', 'log'
     
     data_type: String, Options: 'mocks', 'real'
     The type of data set on which we want to run the power spectrum computation.
@@ -613,11 +613,6 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
         all_mocks_mean_power_spectrum = vstack([all_mocks_mean_power_spectrum, mock_mean_power_spectrum])  
         
     if k_binning:
-        if data_type == 'mocks':
-            k_scale = 'log'
-        else:
-            k_scale = 'real'
-
         print('Wavenumber rebinning')
         all_mocks_mean_power_spectrum = wavenumber_rebin_power_spectrum(power_spectrum_table=all_mocks_mean_power_spectrum, 
                                                          n_kbins=n_kbins, k_scale=k_scale)
