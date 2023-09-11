@@ -451,10 +451,10 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins, k_scale):
 
     if k_scale == 'log': # Used in mocks case
         k_bin_edges = np.logspace(-2, np.log10(np.max(power_spectrum_table['k_parallel'][0])), 
-                                  num=n_kbins)
+                                  num=n_kbins+1)
     else: # Used in data case
         k_bin_edges = np.linspace(np.min(power_spectrum_table['k_parallel'][0]), 
-                                  np.max(power_spectrum_table['k_parallel'][0]), num=n_kbins)
+                                  np.max(power_spectrum_table['k_parallel'][0]), num=n_kbins+1)
 
     k_bin_centers = np.around((k_bin_edges[1:] + k_bin_edges[:-1]) / 2, 5) # same units as k_parallel
 
