@@ -11,7 +11,7 @@ from astropy.cosmology import FlatLambdaCDM
 from tools import rebin_vector, SPEED_LIGHT, LAMBDA_LYA
 
 
-def wavenumber_rebin_p3d(p3d_table, n_kbins):
+def wavenumber_rebin_p3d(p3d_table, n_kbins, k_scale):
     """ This function rebins the 3D power spectrum into k_parallel bins
     
     Arguments:
@@ -21,6 +21,9 @@ def wavenumber_rebin_p3d(p3d_table, n_kbins):
 
     n_kbins: Integer
     Number of k bins we want after rebinning
+    
+    k_scale: String
+    Scale of wavenumber array to be rebinned. Options: 'linear', 'log'
     
     Return:
     -------
@@ -38,8 +41,13 @@ def wavenumber_rebin_p3d(p3d_table, n_kbins):
     p3d_table['error_P3D_rebinned'] = np.zeros((len(p3d_table), n_kbins))
 
     for j in range(len(p3d_table)):
+        
+        if k_scale == 'log':
+            k_bin_edges = np.logspace(-2, np.log10(np.max(p3d_table[k_to_be_rebinned][j])), num=n_kbins+1)
+        else:
+            k_bin_edges = np.linspace(np.in(p3d_table[k_to_be_rebinned][j]), 
+                                      np.max(p3d_table[k_to_be_rebinned][j]), num=n_kbins+1)
 
-        k_bin_edges = np.logspace(-2, np.log10(np.max(p3d_table[k_to_be_rebinned][j])), num=n_kbins+1)
         k_bin_centers = np.around((k_bin_edges[1:] + k_bin_edges[:-1]) / 2, 5)
     
         p3d_table[str(k_to_be_rebinned)+'_rebinned'][j,:] = k_bin_centers
@@ -153,7 +161,7 @@ def _pcross_interpolated(pcross_table, angular_separation_array, n_angsep=1000,
 
 def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular,
                   mean_redshift, interp_method='UnivariateSpline', smoothing=0, n_angsep=1000,
-                  compute_errors=False, k_binning=False, n_kbins = 30):
+                  compute_errors=False, k_binning=False, n_kbins = 30, k_scale):
     """ This function computes the P3D out of the Pcross in cartesian coordinates:
           - It either computes the P3D out of Pcross by direct integration over the angular separation
           - Or it interpolates the Pcross with a spline function before integration
@@ -198,6 +206,9 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
     
     n_kbins: Integer
     Number of wavenumber bins if k_binning
+    
+    k_scale: String
+    Scale of wavenumber array to be rebinned if k_binning. Options: 'linear', 'log'
 
     # The p3d output units will be the same as Pcross input
     
@@ -272,7 +283,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
                 p3d_table['error_P3D'][ik_perp,ik_par] = error_P3D
 
     if k_binning == True:
-        p3d_table = wavenumber_rebin_p3d(p3d_table, n_kbins)
+        p3d_table = wavenumber_rebin_p3d(p3d_table, n_kbins, k_scale)
 
     return p3d_table
 
