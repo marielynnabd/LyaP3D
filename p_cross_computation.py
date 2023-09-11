@@ -448,7 +448,7 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
     return mean_power_spectrum
 
 
-def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins):
+def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins, k_scale):
     """ This function rebins the cross power spectrum into parallel wavenumber bins
 
     Arguments:
@@ -458,6 +458,9 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins):
 
     n_kbins: Integer
     Number of k bins we want after rebinning
+    
+    k_scale: String
+    Scale of wavenumber array to be rebinned. Options: 'linear', 'log'
 
     Return:
     -------
@@ -465,7 +468,13 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins):
     Same table as in input, but with rebinned power spectrum columns added to the table
     """
 
-    k_bin_edges = np.logspace(-2, np.log10(np.max(power_spectrum_table['k_parallel'][0])), num=n_kbins) # same units as k_parallel
+    if k_scale == 'log':
+        k_bin_edges = np.logspace(-2, np.log10(np.max(power_spectrum_table['k_parallel'][0])), 
+                                  num=n_kbins) # same units as k_parallel
+    else:
+        k_bin_edges = np.linspace(np.min(power_spectrum_table['k_parallel'][0]), 
+                                  np.max(power_spectrum_table['k_parallel'][0]), num=n_kbins)
+
     k_bin_centers = np.around((k_bin_edges[1:] + k_bin_edges[:-1]) / 2, 5) # same units as k_parallel
 
     # Add columns to power_spectrum_table
