@@ -33,3 +33,14 @@ def cov_to_corrmat(covmatrix):
     gaid = np.linalg.inv(sigmas)
     return gaid @ covmatrix @ gaid
 
+
+def eliminate_outlyers(data_set, m_sigma):
+    mean = np.mean(data_set)
+    sigma = np.std(data_set)
+    final_data_set = [x for x in data_set if (x > mean - m_sigma * sigma)]
+    final_data_set = [x for x in final_data_set if (x < mean + m_sigma * sigma)]
+    final_data_set = np.array(final_data_set)
+    if len(final_data_set) != len(data_set):
+        print(str(m_sigma)+'sigma outlyers eliminated')
+    return final_data_set
+
