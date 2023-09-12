@@ -45,7 +45,7 @@ def wavenumber_rebin_p3d(p3d_table, n_kbins, k_scale):
         if k_scale == 'log':
             k_bin_edges = np.logspace(-2, np.log10(np.max(p3d_table[k_to_be_rebinned][j])), num=n_kbins+1)
         else:
-            k_bin_edges = np.linspace(np.in(p3d_table[k_to_be_rebinned][j]), 
+            k_bin_edges = np.linspace(np.min(p3d_table[k_to_be_rebinned][j]),
                                       np.max(p3d_table[k_to_be_rebinned][j]), num=n_kbins+1)
 
         k_bin_centers = np.around((k_bin_edges[1:] + k_bin_edges[:-1]) / 2, 5)
