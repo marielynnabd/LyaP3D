@@ -496,11 +496,11 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins, k_scale):
     return power_spectrum_table
 
 
-def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_edges, n_kbins, p_noise=0,
+def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_edges, n_kbins, k_scale, p_noise=0,
                                     min_snr_p_cross=None, min_snr_p_auto=None,
                                     max_resolution_p_cross=None, max_resolution_p_auto=None,
                                     resolution_correction=False, reshuffling=False, with_covmat=True,
-                                    k_binning=False, k_scale, data_type='mocks',
+                                    k_binning=False, data_type='mocks',
                                     units='Angstrom',
                                     radec_names=['ra', 'dec']): 
     """ - This function computes all_mocks_mean_power_spectrum:

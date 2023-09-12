@@ -160,8 +160,8 @@ def _pcross_interpolated(pcross_table, angular_separation_array, n_angsep=1000,
 
 
 def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular,
-                  mean_redshift, interp_method='UnivariateSpline', smoothing=0, n_angsep=1000,
-                  compute_errors=False, k_binning=False, n_kbins = 30, k_scale):
+                  mean_redshift, k_scale, interp_method='UnivariateSpline', smoothing=0, n_angsep=1000,
+                  compute_errors=False, k_binning=False, n_kbins = 30):
     """ This function computes the P3D out of the Pcross in cartesian coordinates:
           - It either computes the P3D out of Pcross by direct integration over the angular separation
           - Or it interpolates the Pcross with a spline function before integration
