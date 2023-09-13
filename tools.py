@@ -48,19 +48,40 @@ def eliminate_outlyers(data_set, m_sigma):
 def _meanvalues_from_binedges(arr, edges):
     meanvals = np.zeros(len(edges)-1)
     for i in range(len(meanvals)):
-        sel = (arr>
+        sel = (arr>=edges[i]) & (arr<edges[i+1])
+        meanvals[i] = np.mean(arr[sel])
+    return meanvals
 
-def find_bin_edges(arr, mean_values):
+
+def find_bin_edges(arr, mean_values_target, debug=False):
     """ Find bin edges so that when histogramming an array, the 
     mean values in each bin are given.
-    Output: edges, size = len(mean_values)+1
+    Output: edges, size = len(mean_values_target)+1
     """
     arr = np.array(arr)
-    mean_values = np.sort(mean_values)
-    if np.min(a) > mean_values[0] or np.max(a) < mean_values[-1]:
+    mean_values_target = np.sort(mean_values)
+    if np.min(a) > mean_values_target[0] or np.max(a) < mean_values_target[-1]:
         raise ValueError("find_bin_edges: mean_values are not adapted to array")
     
-    edges = np.zeros(len(mean_values)+1)
+    edges = np.zeros(len(mean_values_target)+1)
     edges[0], edges[-1] = np.min(arr), np.max(arr)
-    for i in range(1,len(edges)):
-        edges[i] = (mean_values[i-1]+mean_values[i])/2
+    for i in range(1,len(edges)-1):
+    	edges[i] = edges[i-1]
+    	sel = (arr>=edges[i-1]) & (arr<edges[i])
+    	meanval = np.mean(arr[sel])
+    	while(meanval<mean_values_target[i-1]):
+    		sel = (arr>edges[i])
+    		edges[i] = np.min(arr[sel])
+    		sel = (arr>=edges[i-1]) & (arr<edges[i])
+    		meanval = np.mean(arr[sel])
+
+	if debug:
+		print("** Debug:")
+		print(edges)
+		for i in range(len(mean_values_target)):
+			sel = (arr>=edges[i-1]) & (arr<edges[i])
+			print(mean_values_target[i], np.mean(arr[sel]))
+
+	return edges
+    	
+    
