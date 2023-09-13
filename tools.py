@@ -45,14 +45,6 @@ def eliminate_outlyers(data_set, m_sigma):
     return final_data_set
 
 
-def _meanvalues_from_binedges(arr, edges):
-    meanvals = np.zeros(len(edges)-1)
-    for i in range(len(meanvals)):
-        sel = (arr>=edges[i]) & (arr<edges[i+1])
-        meanvals[i] = np.mean(arr[sel])
-    return meanvals
-
-
 def find_bin_edges(arr, mean_values_target, debug=False):
     """ Find bin edges so that when histogramming an array, the 
     mean values in each bin are given.
