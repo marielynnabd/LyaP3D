@@ -44,3 +44,23 @@ def eliminate_outlyers(data_set, m_sigma):
         print(str(m_sigma)+'sigma outlyers eliminated')
     return final_data_set
 
+
+def _meanvalues_from_binedges(arr, edges):
+    meanvals = np.zeros(len(edges)-1)
+    for i in range(len(meanvals)):
+        sel = (arr>
+
+def find_bin_edges(arr, mean_values):
+    """ Find bin edges so that when histogramming an array, the 
+    mean values in each bin are given.
+    Output: edges, size = len(mean_values)+1
+    """
+    arr = np.array(arr)
+    mean_values = np.sort(mean_values)
+    if np.min(a) > mean_values[0] or np.max(a) < mean_values[-1]:
+        raise ValueError("find_bin_edges: mean_values are not adapted to array")
+    
+    edges = np.zeros(len(mean_values)+1)
+    edges[0], edges[-1] = np.min(arr), np.max(arr)
+    for i in range(1,len(edges)):
+        edges[i] = (mean_values[i-1]+mean_values[i])/2
