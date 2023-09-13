@@ -59,29 +59,26 @@ def find_bin_edges(arr, mean_values_target, debug=False):
     Output: edges, size = len(mean_values_target)+1
     """
     arr = np.array(arr)
-    mean_values_target = np.sort(mean_values)
-    if np.min(a) > mean_values_target[0] or np.max(a) < mean_values_target[-1]:
+    mean_values_target = np.sort(mean_values_target)
+    if np.min(arr) > mean_values_target[0] or np.max(arr) < mean_values_target[-1]:
         raise ValueError("find_bin_edges: mean_values are not adapted to array")
     
     edges = np.zeros(len(mean_values_target)+1)
     edges[0], edges[-1] = np.min(arr), np.max(arr)
     for i in range(1,len(edges)-1):
-    	edges[i] = edges[i-1]
-    	sel = (arr>=edges[i-1]) & (arr<edges[i])
-    	meanval = np.mean(arr[sel])
-    	while(meanval<mean_values_target[i-1]):
-    		sel = (arr>edges[i])
-    		edges[i] = np.min(arr[sel])
-    		sel = (arr>=edges[i-1]) & (arr<edges[i])
-    		meanval = np.mean(arr[sel])
+        edges[i] = edges[i-1]
+        meanval = mean_values_target[i-1]-1
+        while(meanval<mean_values_target[i-1]):
+            sel = (arr>edges[i])
+            edges[i] = np.min(arr[sel])
+            sel = (arr>=edges[i-1]) & (arr<edges[i])
+            meanval = np.mean(arr[sel])
 
-	if debug:
-		print("** Debug:")
-		print(edges)
-		for i in range(len(mean_values_target)):
-			sel = (arr>=edges[i-1]) & (arr<edges[i])
-			print(mean_values_target[i], np.mean(arr[sel]))
+    if debug:
+        print("** Debug:")
+        print(edges)
+        for i in range(len(mean_values_target)):
+            sel = (arr>=edges[i]) & (arr<edges[i+1])
+            print(mean_values_target[i], np.mean(arr[sel]))
 
-	return edges
-    	
-    
+    return edges
