@@ -581,20 +581,14 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
                                         radec_names=radec_names, ncpu=ncpu)
 
         # Defining edges of angular separation bins used for next step
-        # ang_sep_bin_edges = np.array([0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1])
+
         if radec_names == ['x', 'y']:
             print("WARNING! converting distang with z=",z)
             ang_sep_bin_edges *= deg_to_Mpc * h
 
         # Computing the mean_p_cross for each mock
-        # print('Computing mean power spectrum in ', units)
+
         print('Computing mean power spectrum in input units')
-        # mock_mean_power_spectrum = compute_mean_power_spectrum(all_los_table=all_los_table, 
-        #                                                        los_pairs_table=los_pairs_table, 
-        #                                                        ang_sep_bin_edges=ang_sep_bin_edges, 
-        #                                                        data_type=data_type, units=units,
-        #                                                        min_snr_p_cross=min_snr_p_cross, 
-        #                                                        min_snr_p_auto=min_snr_p_auto)
         
         mock_mean_power_spectrum = compute_mean_power_spectrum(all_los_table=all_los_table, 
                                                                los_pairs_table=los_pairs_table,
