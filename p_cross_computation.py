@@ -10,7 +10,7 @@ from astropy.table import Table, vstack
 from multiprocessing import Pool
 from astropy.cosmology import FlatLambdaCDM
 
-from tools import rebin_vector, SPEED_LIGHT, LAMBDA_LYA
+from tools import SPEED_LIGHT, LAMBDA_LYA, find_bin_edges
 from eBOSS_dr16_analysis import boss_resolution_correction
 from pairs_computation import compute_pairs
 
@@ -496,8 +496,9 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins, k_scale):
     return power_spectrum_table
 
 
-def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_edges, n_kbins, k_scale, p_noise=0,
-                                    min_snr_p_cross=None, min_snr_p_auto=None,
+def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_scale,
+                                    ang_sep_bin_edges=None, ang_sep_bin_centers=None,
+                                    p_noise=0, min_snr_p_cross=None, min_snr_p_auto=None,
                                     max_resolution_p_cross=None, max_resolution_p_auto=None,
                                     resolution_correction=False, reshuffling=False, with_covmat=True,
                                     k_binning=False, data_type='mocks',
@@ -519,8 +520,14 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
     
     ang_sep_max: Same definition as in function get_possible_pairs
     
-    ang_sep_bin_edges: Array
-    Array of angular separation bin edges
+    ang_sep_bin_edges: Array, Default to None
+    Array of angular separation bin edges.
+    If this array wasn't given, it can be determined automatically if the desired bin centers were given.
+    Either this array or ang_sep_bin_centers must be given.
+
+    ang_sep_bin_centers: Array, Default to None
+    Array of angular separation bin centers determined automatically if the desired bin edges were given.
+    Either this array or ang_sep_bin_edges must be given.
 
     min_snr_p_cross, min_snr_p_auto: Floats, Defaults are None
     The values of minimum snr required for both p_cross and p_auto computation.
@@ -581,6 +588,23 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
                                         radec_names=radec_names, ncpu=ncpu)
 
         # Defining edges of angular separation bins used for next step
+        if (ang_sep_bin_edges is None) and (ang_sep_bin_centers is not None):
+            ang_sep_bin_edges = find_bin_edges(los_pairs_table['ang_separation'],
+                                               mean_values_target=ang_sep_bin_centers,
+                                               debug=True)
+            ang_sep_bin_edges = np.append(0, ang_sep_bin_edges)
+
+        elif (ang_sep_bin_edges is not None) and (ang_sep_bin_centers is None):
+            print("WARNING! both ang_sep_bin_edges and ang_sep_bin_centers were assigned,"+
+                  "in this case new ang_sep_bin_edges will be calculated based on the ang_sep_bin_centers input array")
+
+            ang_sep_bin_edges = find_bin_edges(los_pairs_table['ang_separation'],
+                                               mean_values_target=ang_sep_bin_centers,
+                                               debug=True)
+            ang_sep_bin_edges = np.append(0, ang_sep_bin_edges)
+
+        elif (ang_sep_bin_edges is None) and (ang_sep_bin_centers is None):
+            raise ValueError("At least one of ang_sep_bin_edges or ang_sep_bin_centers arrays must be given!")
 
         if radec_names == ['x', 'y']:
             print("WARNING! converting distang with z=",z)
@@ -589,7 +613,7 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, ang_sep_bin_ed
         # Computing the mean_p_cross for each mock
 
         print('Computing mean power spectrum in input units')
-        
+
         mock_mean_power_spectrum = compute_mean_power_spectrum(all_los_table=all_los_table, 
                                                                los_pairs_table=los_pairs_table,
                                                                ang_sep_bin_edges=ang_sep_bin_edges,
