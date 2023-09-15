@@ -45,7 +45,7 @@ def eliminate_outlyers(data_set, m_sigma):
     return final_data_set
 
 
-def find_bin_edges(arr, mean_values_target, debug=False, for_px=True):
+def find_bin_edges(arr, mean_values_target, debug=False, for_p_cross=True):
     """ Find bin edges so that when histogramming an array, the 
     mean values in each bin are given.
     option for_px: for the purpose of LyP3D
@@ -54,7 +54,7 @@ def find_bin_edges(arr, mean_values_target, debug=False, for_px=True):
 
     arr = np.array(arr)
     mean_values_target = np.sort(mean_values_target)
-    if for_px:
+    if for_p_cross:
         last_value = 2*mean_values_target[-1] - mean_values_target[-2]
         mean_values_target = np.append(mean_values_target, [last_value])
 
@@ -72,7 +72,7 @@ def find_bin_edges(arr, mean_values_target, debug=False, for_px=True):
             sel = (arr>=edges[i-1]) & (arr<edges[i])
             meanval = np.mean(arr[sel])
 
-    if for_px:
+    if for_p_cross:
         edges[0] = 0
         edges = edges[:-1]
 
