@@ -592,7 +592,6 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_sca
             ang_sep_bin_edges = find_bin_edges(los_pairs_table['ang_separation'],
                                                mean_values_target=ang_sep_bin_centers,
                                                debug=True)
-            ang_sep_bin_edges = np.append(0, ang_sep_bin_edges)
 
         elif (ang_sep_bin_edges is not None) and (ang_sep_bin_centers is None):
             print("WARNING! both ang_sep_bin_edges and ang_sep_bin_centers were assigned,"+
@@ -601,7 +600,6 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_sca
             ang_sep_bin_edges = find_bin_edges(los_pairs_table['ang_separation'],
                                                mean_values_target=ang_sep_bin_centers,
                                                debug=True)
-            ang_sep_bin_edges = np.append(0, ang_sep_bin_edges)
 
         elif (ang_sep_bin_edges is None) and (ang_sep_bin_centers is None):
             raise ValueError("At least one of ang_sep_bin_edges or ang_sep_bin_centers arrays must be given!")
