@@ -45,16 +45,22 @@ def eliminate_outlyers(data_set, m_sigma):
     return final_data_set
 
 
-def find_bin_edges(arr, mean_values_target, debug=False):
+def find_bin_edges(arr, mean_values_target, debug=False, for_px=True):
     """ Find bin edges so that when histogramming an array, the 
     mean values in each bin are given.
+    option for_px: for the purpose of LyP3D
     Output: edges, size = len(mean_values_target)+1
     """
+
     arr = np.array(arr)
     mean_values_target = np.sort(mean_values_target)
+    if for_px:
+        last_value = 2*mean_values_target[-1] - mean_values_target[-2]
+        mean_values_target = np.append(mean_values_target, [last_value])
+
     if np.min(arr) > mean_values_target[0] or np.max(arr) < mean_values_target[-1]:
         raise ValueError("find_bin_edges: mean_values are not adapted to array")
-    
+
     edges = np.zeros(len(mean_values_target)+1)
     edges[0], edges[-1] = np.min(arr), np.max(arr)
     for i in range(1,len(edges)-1):
@@ -66,11 +72,15 @@ def find_bin_edges(arr, mean_values_target, debug=False):
             sel = (arr>=edges[i-1]) & (arr<edges[i])
             meanval = np.mean(arr[sel])
 
+    if for_px:
+        edges[0] = 0
+        edges = edges[:-1]
+
     if debug:
         print("** Debug:")
-        print(edges)
+        print("Bin edges:", edges)
         for i in range(len(mean_values_target)):
             sel = (arr>=edges[i]) & (arr<edges[i+1])
-            print(mean_values_target[i], np.mean(arr[sel]))
+            print("Mean values (target/effective):", mean_values_target[i], np.mean(arr[sel]))
 
     return edges
