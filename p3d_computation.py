@@ -210,8 +210,10 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
     k_scale: String
     Scale of wavenumber array to be rebinned if k_binning. Options: 'linear', 'log'
 
-    # The p3d output units will be the same as Pcross input
-    
+    # The p3d output units will be the same as pcross_table in input:
+        - if pcross_table is in Mpc/h, k_perpandicular must be in h/Mpc and P3D will be in [Mpc/h]^3.
+        - if pcross_table is in km/s (eBOSS case), k_perpandicular must be in degree^-1 and P3D will be in deg^2 km/s.
+
     Return:
     -------
     p3d_table: Table
@@ -260,7 +262,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
 
     # Integrate Pcross_interpolated to compute P3D
     for ik_par, k_par in enumerate(k_parallel):  # k_par in [h/Mpc]
-        for ik_perp, k_perp in enumerate(k_perpandicular): # k_perp in [h/Mpc]
+        for ik_perp, k_perp in enumerate(k_perpandicular):
             #  Defining integrand_Pcross
             integrand_Pcross = 2 * np.pi * angular_separation_array_fine_binning * scipy.special.j0(angular_separation_array_fine_binning * k_perp) * Pcross_interpolated[:,ik_par]
 
