@@ -593,7 +593,7 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_sca
                                                mean_values_target=ang_sep_bin_centers,
                                                debug=True)
 
-        elif (ang_sep_bin_edges is not None) and (ang_sep_bin_centers is None):
+        elif (ang_sep_bin_edges is not None) and (ang_sep_bin_centers is not None):
             print("WARNING! both ang_sep_bin_edges and ang_sep_bin_centers were assigned,"+
                   "in this case new ang_sep_bin_edges will be calculated based on the ang_sep_bin_centers input array")
 
