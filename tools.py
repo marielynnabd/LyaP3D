@@ -79,7 +79,7 @@ def find_bin_edges(arr, mean_values_target, debug=False, for_p_cross=True):
     if debug:
         print("** Debug:")
         print("Bin edges:", edges)
-        for i in range(len(mean_values_target)):
+        for i in range(len(mean_values_target)-1):
             sel = (arr>=edges[i]) & (arr<edges[i+1])
             print("Mean values (target/effective):", mean_values_target[i], np.mean(arr[sel]))
 
