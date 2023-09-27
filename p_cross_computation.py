@@ -51,16 +51,18 @@ def convert_units(data_to_convert, input_units, output_units, z, inverse_units=F
             converted_data = data_to_convert * conversion_A_Mpcph
         else:
             converted_data = data_to_convert * conversion_Mpcph_A
-    elif input_units == 'km/s' and output_units == 'Mpcph':
+    elif input_units == 'km/s' and output_units == 'Mpc/h':
         if inverse_units:
             converted_data = data_to_convert * conversion_Mpcph_kmps
         else:
             converted_data = data_to_convert * conversion_kmps_Mpcph
-    elif input_units == 'Mpcph' and output_units == 'kmps':
+    elif input_units == 'Mpc/h' and output_units == 'km/s':
         if inverse_units:
             converted_data = data_to_convert * conversion_kmps_Mpcph
         else:
             converted_data = data_to_convert * conversion_Mpcph_kmps
+    else:
+        converted_data = data_to_convert
     
     return converted_data
 
