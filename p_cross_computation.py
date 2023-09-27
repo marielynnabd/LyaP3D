@@ -15,9 +15,59 @@ from eBOSS_dr16_analysis import boss_resolution_correction
 from pairs_computation import compute_pairs
 
 
-def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_snr_p_cross=None, max_resolution_p_cross=None,
-                         resolution_correction=False, reshuffling=False, with_covmat=True,
-                         data_type='mocks', units='Angstrom'):
+def convert_units(data_to_convert, input_units, output_units, z, inverse_units=False):
+    
+    # Computing cosmo used for conversions
+    Omega_m = 0.3153
+    h = 0.7
+    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
+    
+    # Defining all conversion factors
+    conversion_A_kmps = SPEED_LIGHT / ((1 + z) * LAMBDA_LYA)
+    conversion_kmps_A = 1 / conversion_A_kmps
+    conversion_A_Mpcph = SPEED_LIGHT * h / (cosmo.H(z).value * LAMBDA_LYA)
+    conversion_Mpcph_A = 1 / conversion_A_Mpcph
+    conversion_kmps_Mpcph = conversion_kmps_A * conversion_A_Mpcph
+    conversion_Mpcph_kmps = conversion_Mpcph_A * conversion_A_kmps
+
+    # Conversions
+    if input_units == 'Angstrom' and output_units == 'km/s':
+        if inverse_units:
+            converted_data = data_to_convert * conversion_kmps_A
+        else:
+            converted_data = data_to_convert * conversion_A_kmps
+    elif input_units == 'km/s' and output_units == 'Angstrom':
+        if inverse_units:
+            converted_data = data_to_convert * conversion_A_kmps
+        else:
+            converted_data = data_to_convert * conversion_kmps_A
+    elif input_units == 'Angstrom' and output_units == 'Mpc/h':
+        if inverse_units:
+            converted_data = data_to_convert * conversion_Mpcph_A
+        else:
+            converted_data = data_to_convert * conversion_A_Mpcph
+    elif input_units == 'Mpc/h' and output_units == 'Angstrom':
+        if inverse_units:
+            converted_data = data_to_convert * conversion_A_Mpcph
+        else:
+            converted_data = data_to_convert * conversion_Mpcph_A
+    elif input_units == 'km/s' and output_units == 'Mpcph':
+        if inverse_units:
+            converted_data = data_to_convert * conversion_Mpcph_kmps
+        else:
+            converted_data = data_to_convert * conversion_kmps_Mpcph
+    elif input_units == 'Mpcph' and output_units == 'kmps':
+        if inverse_units:
+            converted_data = data_to_convert * conversion_kmps_Mpcph
+        else:
+            converted_data = data_to_convert * conversion_Mpcph_kmps
+    
+    return converted_data
+
+
+def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type, units,
+                         min_snr_p_cross=None, max_resolution_p_cross=None,
+                         resolution_correction=False, reshuffling=False, with_covmat=True):
     """ This function computes mean power spectrum for pairs with angular separations > 0 (called cross power spectrum):
           - Takes mock and corresponding los_pairs_table
           _ Computes cross power spectrum for each pair
@@ -58,8 +108,8 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
         - In the case of real data: The cross power spectrum will be first computed unitless,
         because wavelength = LOGLAM, therefore it is mandatory to multiply it my a factor c, and the output will be in [km/s].
     
-    units: String, Options: 'Mpc/h', 'Angstrom', 'km/s', Default is Angstrom
-    Units in which to compute power spectrum. This argument must be specified if data_type is 'mocks'.
+    units: String, Options: 'Mpc/h', 'Angstrom', 'km/s'.
+    Units in which to compute power spectrum.
     
     Return:
     -------
@@ -164,18 +214,24 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
         k_parallel = 2 * np.pi * np.fft.rfftfreq(Npix, delta_lambda) # same units as delta_lambda
 
         if data_type == 'mocks':
-            # If the output unit desired is not Angstrom
-            if units == 'km/s':
-                conversion_factor = (1 + z) * LAMBDA_LYA / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
-                p_cross /= conversion_factor # km/s
-                k_parallel *= conversion_factor # k_parallel in [km/s]^-1
+            p_cross = convert_units(p_cross, 'Angstrom', units, z, inverse_units=False)
+            k_parallel = convert_units(k_parallel, 'Angstrom', units, z, inverse_units=True)
+        elif data_type == 'real': # real means eBOSS for now
+            p_cross = convert_units(p_cross, 'km/s', units, z, inverse_units=False)
+            k_parallel = convert_units(k_parallel, 'km/s', units, z, inverse_units=True)
 
-            elif units == 'Mpc/h':
-                conversion_factor = cosmo.H(z).value * LAMBDA_LYA / SPEED_LIGHT
-                p_cross /= conversion_factor # Mpc
-                k_parallel *= conversion_factor # Mpc^-1
-                p_cross *= h # [Mpc/h]
-                k_parallel /= h # [Mpc/h]^-1
+#             # If the output unit desired is not Angstrom
+#             if units == 'km/s':
+#                 conversion_factor = (1 + z) * LAMBDA_LYA / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
+#                 p_cross /= conversion_factor # km/s
+#                 k_parallel *= conversion_factor # k_parallel in [km/s]^-1
+
+#             elif units == 'Mpc/h':
+#                 conversion_factor = cosmo.H(z).value * LAMBDA_LYA / SPEED_LIGHT
+#                 p_cross /= conversion_factor # Mpc
+#                 k_parallel *= conversion_factor # Mpc^-1
+#                 p_cross *= h # [Mpc/h]
+#                 k_parallel /= h # [Mpc/h]^-1
 
         # resolution correction computation
         if resolution_correction == True:
@@ -219,8 +275,9 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, min_
     return p_cross_table
 
 
-def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_auto=None, resolution_correction=True, 
-                        p_noise=0, with_covmat=True, data_type='mocks', units='Angstrom'):
+def compute_mean_p_auto(all_los_table, data_type, units, 
+                        min_snr_p_auto=None, max_resolution_p_auto=None, resolution_correction=True, 
+                        p_noise=0, with_covmat=True):
     """ This function computes mean power spectrum for angular separation = 0 (Lya forest and itself, called auto power spectrum):
           - Takes all_los_table
           - Computes auto power spectrum for each LOS 
@@ -255,8 +312,8 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
         - In the case of real data: The auto power spectrum will be first computed unitless,
         because wavelength = LOGLAM, therefore it is mandatory to multiply it my a factor c, and the output will be in [km/s].
     
-    units: String, Options: 'Mpc/h', 'Angstrom', 'km/s', Default is Angstrom
-    Units in which to compute power spectrum. This argument must be specified if data_type is 'mocks'.
+    units: String, Options: 'Mpc/h', 'Angstrom', 'km/s'.
+    Units in which to compute power spectrum.
     
     Return:
     -------
@@ -332,19 +389,24 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     k_parallel = 2 * np.pi * np.fft.rfftfreq(Npix, delta_lambda) # same units as delta_lambda
 
     if data_type == 'mocks':
-    
-        if units == 'km/s':
-            conversion_factor = (1 + z) * LAMBDA_LYA / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
-            p_auto /= conversion_factor # km/s
-            k_parallel *= conversion_factor # k_parallel in [km/s]^-1
+        p_auto = convert_units(p_auto, 'Angstrom', units, z, inverse_units=False)
+        k_parallel = convert_units(k_parallel, 'Angstrom', units, z, inverse_units=True)
+    elif data_type == 'real': # real means eBOSS for now
+        p_auto = convert_units(p_auto, 'km/s', units, z, inverse_units=False)
+        k_parallel = convert_units(k_parallel, 'km/s', units, z, inverse_units=True)
 
-        elif units == 'Mpc/h':
-            # from Angstrom^-1 to Mpc^-1:
-            conversion_factor = cosmo.H(z).value * LAMBDA_LYA / SPEED_LIGHT
-            p_auto /= conversion_factor # Mpc
-            k_parallel *= conversion_factor # Mpc^-1
-            p_auto *= h # [Mpc/h]
-            k_parallel /= h # [Mpc/h]^-1
+#         if units == 'km/s':
+#             conversion_factor = (1 + z) * LAMBDA_LYA / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
+#             p_auto /= conversion_factor # km/s
+#             k_parallel *= conversion_factor # k_parallel in [km/s]^-1
+
+#         elif units == 'Mpc/h':
+#             # from Angstrom^-1 to Mpc^-1:
+#             conversion_factor = cosmo.H(z).value * LAMBDA_LYA / SPEED_LIGHT
+#             p_auto /= conversion_factor # Mpc
+#             k_parallel *= conversion_factor # Mpc^-1
+#             p_auto *= h # [Mpc/h]
+#             k_parallel /= h # [Mpc/h]^-1
 
     # resolution correction computation
     if resolution_correction == True:
@@ -387,8 +449,8 @@ def compute_mean_p_auto(all_los_table, min_snr_p_auto=None, max_resolution_p_aut
     return p_auto_table
 
 
-def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type='mocks',
-                                units='Angstrom', p_noise=0, min_snr_p_cross=None, min_snr_p_auto=None,
+def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type,
+                                units, p_noise=0, min_snr_p_cross=None, min_snr_p_auto=None,
                                 max_resolution_p_cross=None, max_resolution_p_auto=None,
                                 resolution_correction=False, reshuffling=False, with_covmat=True):
     """ - This function computes mean_power_spectrum:
@@ -496,14 +558,12 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins, k_scale):
     return power_spectrum_table
 
 
-def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_scale,
+def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_scale, data_type, units,
                                     ang_sep_bin_edges=None, ang_sep_bin_centers=None,
                                     p_noise=0, min_snr_p_cross=None, min_snr_p_auto=None,
                                     max_resolution_p_cross=None, max_resolution_p_auto=None,
                                     resolution_correction=False, reshuffling=False, with_covmat=True,
-                                    k_binning=False, data_type='mocks',
-                                    units='Angstrom',
-                                    radec_names=['ra', 'dec']): 
+                                    k_binning=False, radec_names=['ra', 'dec']): 
     """ - This function computes all_mocks_mean_power_spectrum:
             - Takes all mocks or one mock
             - Gets pairs table for each mock separately
