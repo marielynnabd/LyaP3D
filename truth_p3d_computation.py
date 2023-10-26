@@ -237,6 +237,119 @@ def p3d_truth_cartesian(k_par, k_perp, p_k_linear, b_delta_squared=None, beta=No
     return p3d_truth
 
 
+def p3d_truth_polar_new(k, mu, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152, a_v=0.561, b_v=1.58, k_p=13.5, a_p=2, 
+                        b_delta_squared=0.012462846812427325, beta=1.385, model='model1'):
+    """ Computes the deviation from linear theory due to non-linear evolution and P3D truth computation in polar coordinates
+
+    Arguments:
+    ----------
+    k: ndarray of floats, or float [h/Mpc]
+    Wavenumber value at which we want p3d to be computed, k = np.sqrt((kx**2)+(ky**2)+(kz**2))
+
+    mu: ndarray of floats, or float
+    mu value at which we want p3d to be computed, mu = kz/k
+    
+    p_k_linear: 2D array of floats (p_linear,k) in [(Mpc/h)^3], [h/Mpc] respectively
+    Output of init_p_linear, for certain cosmological parameters and k_max = max(k), or any p_k_linear with same shape (p_linear,k)
+
+    model: String - Default: 'model1'
+    Choice of the fitting model we want to use for p3d computation
+    2 possible options:
+        'model1': According to Mcdonald 2001
+        'model2':According to Arinyo-i-prats 2015
+        
+    The following parameters correspond only to 'model2',
+    If 'model1': all corresponding params are hardcoded, can;t be changed in args
+    If 'model2': all params are by default from Tables 2 and 3 - Fiducial at z=2.4, can be changed in args
+    
+    q1, q2: Floats - Default: 0.666, 0
+    Isotropic increase in power due to non-linear growth (NL enhancement of PS)
+    
+    kv, a_v, b_v: Floats - Default: 0.935003735664152, 0.561, 1.58
+    LOS broadening
+    
+    k_p, a_p: Floats - Default: 13.5 #h/Mpc, 2 #fixed for this model
+    Jeans smoothing
+    
+    b_delta_squared, beta: Floats - Default: 0.012462846812427325, 1.385
+    Linear bias parameters
+
+    Return:
+    -------
+    p3d_truth: ndarray of floats, or float [(Mpc/h)^3]
+    Truth p3d at specific (k,mu) values (polar coordinates)
+    """
+
+    k = np.abs(k)
+    mu = np.abs(mu)
+    
+    # Checking for k and mu shapes
+    if np.shape(k) != np.shape(mu):
+        raise ValueError("k and mu must have the same shape.")
+
+    # p_linear interpolation on the k array given here
+    if np.shape(k) == ():
+        k = np.array(k)
+
+    if np.max(k) > np.max(p_k_linear[0]):
+        print("Warning, p_k_linear will be extrapolated")
+
+    p_linear = np.interp(k, p_k_linear[0], p_k_linear[1])
+
+    # P3D computation
+    if model=='model1':
+        
+        # Isotropic increase in power due to non-linear growth
+        k_nl = 6.77 # h/Mpc
+        alpha_nl = 0.550 
+
+        # Jeans smoothing
+        k_p = 15.0 # h/Mpc
+        alpha_p = 2.12
+
+        # LOS broadening
+        k_v0 = 0.819 # h/Mpc
+        k_prime_v = 0.917 # h/Mpc
+        alpha_prime_v = 0.528
+
+        k_v = k_v0 * (1 + (k / k_prime_v))**alpha_prime_v
+        k_parallel = np.abs(mu * k)
+
+        alpha_v = 1.5
+
+        # Fitting model computation
+        D = np.exp(((k / k_nl)**alpha_nl) - ((k / k_p)**alpha_p) - ((k_parallel / k_v)**alpha_v))
+        del(k_v)
+        del(k_parallel)
+       
+        # p3d_truth computation
+        b_delta_squared = 0.0173
+        beta = 1.58
+
+        p3d_truth = b_delta_squared * ((1 + (beta * mu**2))**2) * p_linear * D
+        del(D)
+        
+    elif model=='model2':
+
+        # LOS broadening
+        kv_to_av = kv**a_v # [h/Mpc]^av
+
+        # Fitting model computation
+        delta_squared = (k**3) * p_linear / (2 * np.pi**2)
+        D = np.exp(((q1 * delta_squared) + (q2 * delta_squared**2)) * 
+                   (1 - ((k**a_v) / kv_to_av) * mu**b_v) - (k / k_p)**a_p)
+        del(delta_squared)
+        
+        # p3d_truth compuatation
+        p3d_truth = b_delta_squared * ((1 + (beta * mu**2))**2) * p_linear * D
+        del(D)
+    
+    if np.any(p3d_truth<0):
+        print("Warning, negative P3D")
+    
+    return p3d_truth
+
+
 def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, model='model1'):
     """ Computes p_cross_truth from p3d_truth (computed in p3d_truth_polar) by integrating over k_perp for one (k_par,ang_sep) bin
     
