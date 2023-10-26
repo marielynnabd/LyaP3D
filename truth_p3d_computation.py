@@ -28,7 +28,7 @@ def init_p_linear(k_max, z, input_params=None):
     Return:
     -------
     p_linear: 2D array
-    First array is the p_linear in [(Mpc/h)^3], second array is the k_array in [h/Mpc].
+    First array is the the k_array in [h/Mpc], second array is the p_linear in [(Mpc/h)^3].
     """
 
     if input_params is not None:
@@ -81,7 +81,7 @@ def p3d_truth_polar(k, mu, p_k_linear, b_delta_squared=None, beta=None, kv=None,
     mu: ndarray of floats, or float
     mu value at which we want p3d to be computed, mu = kz/k
     
-    p_k_linear: 2D array of floats (p_linear,k) in [(Mpc/h)^3], [h/Mpc] respectively
+    p_k_linear: 2D array of floats (k, p_linear) in [h/Mpc] and [(Mpc/h)^3] respectively
     Output of init_p_linear, for certain cosmological parameters and k_max = max(k)
 
     model: String - Default: 'model1'
@@ -202,7 +202,7 @@ def p3d_truth_cartesian(k_par, k_perp, p_k_linear, b_delta_squared=None, beta=No
     k_perp array, defined as sqrt(k_x^2 + k_y^2)
     if k_perp and k_par are ndarrays, they must have the same shape
     
-    p_k_linear: 2D array of floats (p_linear,k) in [(Mpc/h)^3], [h/Mpc] respectively
+    p_k_linear: 2D array of floats (k, p_linear) in [h/Mpc] and [(Mpc/h)^3] respectively
     Output of init_p_linear, for certain cosmological parameters and k_max = max(k)
 
     model: String - Default: 'model1'
@@ -248,8 +248,8 @@ def p3d_truth_polar_new(k, mu, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152,
     mu: ndarray of floats, or float
     mu value at which we want p3d to be computed, mu = kz/k
     
-    p_k_linear: 2D array of floats (p_linear,k) in [(Mpc/h)^3], [h/Mpc] respectively
-    Output of init_p_linear, for certain cosmological parameters and k_max = max(k), or any p_k_linear with same shape (p_linear,k)
+    p_k_linear: 2D array of floats (k, p_linear) in [h/Mpc] and [(Mpc/h)^3] respectively
+    Output of init_p_linear, for certain cosmological parameters and k_max = max(k), or any p_k_linear with same shape (k,p_linear)
 
     model: String - Default: 'model1'
     Choice of the fitting model we want to use for p3d computation
@@ -361,8 +361,8 @@ def p3d_truth_cartesian_new(k_par, k_perp, p_k_linear, q1=0.666, q2=0, kv=0.9350
     k_perp array, defined as sqrt(k_x^2 + k_y^2)
     if k_perp and k_par are ndarrays, they must have the same shape
     
-    p_k_linear: 2D array of floats (p_linear,k) in [(Mpc/h)^3], [h/Mpc] respectively
-    Output of init_p_linear, for certain cosmological parameters and k_max = max(k)
+    p_k_linear: 2D array of floats (k, p_linear) in [h/Mpc] and [(Mpc/h)^3] respectively
+    Output of init_p_linear, for certain cosmological parameters and k_max = max(k), or any p_k_linear with same shape (k,p_linear)
 
     model: String - Default: 'model1'
     Choice of the fitting model we want to use for p3d computation
@@ -426,8 +426,8 @@ def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, q1=0.666, q2=0, kv=0
     ang_sep: Float, or ndarray of floats, units: [Mpc/h]
     Angular separation at which we want to compute the integral, it must have same units as k
     
-    p_k_linear: 2D array of floats (p_linear,k) in [(Mpc/h)^3], [h/Mpc] respectively
-    Output of init_p_linear, for certain cosmological parameters and k_max = max(k)
+    p_k_linear: 2D array of floats (k, p_linear) in [h/Mpc] and [(Mpc/h)^3] respectively
+    Output of init_p_linear, for certain cosmological parameters and k_max = max(k), or any p_k_linear with same shape (k,p_linear)
     
     model: String - Default: 'model1'
     Choice of the fitting model we want to use for p3d computation
