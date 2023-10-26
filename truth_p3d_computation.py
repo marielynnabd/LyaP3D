@@ -11,11 +11,8 @@ import scipy
 from scipy.integrate import quad
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, os.environ['HOME']+'/Software/picca/py')
-from picca import constants
-from picca.constants import SPEED_LIGHT # in km/s
-
-lambda_lya = 1215.67 # Angstrom
+sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
+from tools import SPEED_LIGHT, LAMBDA_LYA
 
 
 def init_p_linear(k_max, z, input_params=None):
@@ -52,7 +49,7 @@ def init_p_linear(k_max, z, input_params=None):
                      'output':'mPk',
                      'non linear':'halofit', #emulation of the non linear ps shape (not needed here bcz the desired output is p_linear)
                      'Omega_b':Omega_b,
-                     'Omega_cdm':Omega_cdm,
+                     'Omega_m':Omega_m,
                      'h':h,
                      'A_s':A_s,
                      'n_s':n_s,
@@ -67,14 +64,14 @@ def init_p_linear(k_max, z, input_params=None):
     cosmo.compute()
     k_array = np.logspace(-5, np.log10(k_max), num=1000) # h Mpc^-1
     print(np.max(k_array))
-    p_linear = np.array([cosmo.pk_lin(ki, z) for ki in k_array])
+    p_linear = np.array([cosmo.pk_lin(ki*h, z) for ki in k_array])
 
-    p_k_linear = [k_array, p_linear]
-    
+    p_k_linear = [k_array, p_linear*h**3]
+
     return p_k_linear
 
 
-def p3d_truth_polar(k, mu, p_k_linear, model='model1'):
+def p3d_truth_polar(k, mu, p_k_linear, b_delta_squared=None, beta=None, kv=None, q1=None, b_v=None, model='model1'):
     """ Computes the deviation from linear theory due to non-linear evolution and P3D truth computation in polar coordinates
 
     Arguments:
@@ -99,7 +96,7 @@ def p3d_truth_polar(k, mu, p_k_linear, model='model1'):
     p3d_truth: ndarray of floats, or float [(Mpc/h)^3]
     Truth p3d at specific (k,mu) values (polar coordinates)
     """
-    
+
     k = np.abs(k)
     mu = np.abs(mu)
     
@@ -152,13 +149,19 @@ def p3d_truth_polar(k, mu, p_k_linear, model='model1'):
     elif model=='model2':
         
         # Isotropic increase in power due to non-linear growth (NL enhancement of PS)
-        q1 = 0.666
+        if q1 == None:
+            q1 = 0.666
+
         q2 = 0
 
         # LOS broadening
-        kv_to_av = 0.963 # [h/Mpc]^av
+        if kv == None:
+            kv = 0.935003735664152
+
         a_v = 0.561
-        b_v = 1.58
+        kv_to_av = kv**a_v # [h/Mpc]^av
+        if b_v is None:
+            b_v = 1.58
 
         # Jeans smoothing
         k_p = 13.5 # h/Mpc
@@ -172,8 +175,12 @@ def p3d_truth_polar(k, mu, p_k_linear, model='model1'):
         
         # p3d_truth compuatation:
         
-        b_delta_squared = (0.5574 * np.log(0.8185))**2
-        beta = 1.385
+        if b_delta_squared == None:
+            # b_delta_squared = (0.5574 * np.log(0.8185))**2
+            b_delta_squared = 0.012462846812427325
+            
+        if beta == None: 
+            beta = 1.385
 
         p3d_truth = b_delta_squared * ((1 + (beta * mu**2))**2) * p_linear * D
         del(D)
@@ -184,7 +191,7 @@ def p3d_truth_polar(k, mu, p_k_linear, model='model1'):
     return p3d_truth
 
 
-def p3d_truth_cartesian(k_par, k_perp, p_k_linear, model='model1'):
+def p3d_truth_cartesian(k_par, k_perp, p_k_linear, b_delta_squared=None, beta=None, kv=None, q1=None, b_v=None, model='model1'):
     """ Computes P3D truth in cartesian coordinates
 
     Arguments:
@@ -223,9 +230,9 @@ def p3d_truth_cartesian(k_par, k_perp, p_k_linear, model='model1'):
         mu[(k>0)] = k_par / k[(k>0)] # because k_par can be either an array or a float, if float k_par[(k>0)] doesn't work
     else:
         mu[(k>0)] = k_par[(k>0)] / k[(k>0)]
-    
+
     # p3d_truth computation
-    p3d_truth = p3d_truth_polar(k, mu, p_k_linear, model)
+    p3d_truth = p3d_truth_polar(k, mu, p_k_linear, b_delta_squared, beta, kv, q1, b_v, model)
     
     return p3d_truth
 
@@ -364,7 +371,7 @@ def run_compute_pcross_truth(k_parallel, k_max, ang_sep_bin_centers_to_use, unit
     
     if units != 'Mpc/h':
         print('Converting to Angstrom units')
-        conversion_factor = (hubble(2.5) * lambda_lya) / SPEED_LIGHT # from Angstrom^-1 to Mpc^-1
+        conversion_factor = (hubble(2.5) * LAMBDA_LYA) / SPEED_LIGHT # from Angstrom^-1 to Mpc^-1
         p_cross_truth_table['k_parallel'] /= conversion_factor
         p_cross_truth_table['p_cross_truth'] *= conversion_factor
         p_cross_truth_table['k_parallel'] *= h # Angstrom^-1
@@ -372,7 +379,7 @@ def run_compute_pcross_truth(k_parallel, k_max, ang_sep_bin_centers_to_use, unit
         
         if units == 'km/s':
             print('Converting to km/s units')
-            conversion_factor_2 = (1 + 2.5) * lambda_lya / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
+            conversion_factor_2 = (1 + 2.5) * LAMBDA_LYA / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
             p_cross_truth_table['p_cross_truth'] /= conversion_factor_2 # km/s
             p_cross_truth_table['k_parallel'] *= conversion_factor_2 # k_parallel in [km/s]^-1
 
