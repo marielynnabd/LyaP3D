@@ -412,7 +412,7 @@ def p3d_truth_cartesian_new(k_par, k_perp, p_k_linear, q1=0.666, q2=0, kv=0.9350
     return p3d_truth
 
 
-def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, model='model1'):
+def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152, a_v=0.561, b_v=1.58, k_p=13.5, a_p=2,                                b_delta_squared=0.012462846812427325, beta=1.385, model='model1'):
     """ Computes p_cross_truth from p3d_truth (computed in p3d_truth_polar) by integrating over k_perp for one (k_par,ang_sep) bin
     
     Arguments:
@@ -421,8 +421,8 @@ def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, model='model1'):
     k_parallel value (equivalently: k_z)
     
     k_max: Float, units: [h/Mpc]
-    Max wavenumber we want to reach
-    
+    Max wavenumber we want to reach used for k_perp ranges
+
     ang_sep: Float, or ndarray of floats, units: [Mpc/h]
     Angular separation at which we want to compute the integral, it must have same units as k
     
@@ -434,6 +434,8 @@ def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, model='model1'):
     2 possible options:
         'model1': According to Mcdonald 2001
         'model2':According to Arinyo-i-prats 2015
+        
+    The remaining model dependent args have same definitions as in above functions
 
     Return:
     -------
@@ -454,8 +456,13 @@ def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, model='model1'):
 
     # Computing p3d truth for (k_par, k_perp)
     k_par_grid, k_perp_grid = np.meshgrid(k_par, k_perp)
-    p3d_truth_cartesian_grid = p3d_truth_cartesian(k_par_grid, k_perp_grid, p_k_linear, model) ## TODO: add new args
-
+    # p3d_truth_cartesian_grid = p3d_truth_cartesian(k_par_grid, k_perp_grid, p_k_linear, model) ## TODO: add new args
+    p3d_truth_cartesian_grid = p3d_truth_cartesian_new(k_par=k_par_grid, k_perp=k_perp_grid, p_k_linear=p_k_linear, 
+                                                       q1=q1, q2=q2, kv=kv, a_v=a_v, b_v=b_v, 
+                                                       k_p=k_p, a_p=a_p, 
+                                                       b_delta_squared=b_delta_squared, beta=beta, 
+                                                       model=model)
+    
     p_cross_truth = np.zeros((len(ang_sep), len(k_par)))
     for itheta, theta in enumerate(ang_sep):
         
@@ -463,7 +470,7 @@ def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, model='model1'):
         integrand_grid = k_perp_grid * scipy.special.j0(k_perp_grid * theta) * p3d_truth_cartesian_grid / (2 * np.pi)
         
         # Computing p_cross_truth
-        integral = np.trapz(integrand_grid, k_perp, axis=0)  # integrate on k_perp
+        integral = np.trapz(integrand_grid, k_perp, axis=0)  # integrate on k_perp ## TODO: check axis=0
         p_cross_truth[itheta,:] = integral
         
     p_cross_truth = np.squeeze(p_cross_truth)
