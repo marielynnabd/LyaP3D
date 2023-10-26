@@ -350,6 +350,69 @@ def p3d_truth_polar_new(k, mu, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152,
     return p3d_truth
 
 
+def p3d_truth_cartesian_new(k_par, k_perp, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152, a_v=0.561, b_v=1.58, k_p=13.5, a_p=2,                                         b_delta_squared=0.012462846812427325, beta=1.385, model='model1'):
+    """ Computes P3D truth in cartesian coordinates
+
+    Arguments:
+    ----------
+    k_par: Float or array of floats, units [h/Mpc]
+    k_par array, (k_z)
+
+    k_perp: Float or array of floats, units [h/Mpc]
+    k_perp array, defined as sqrt(k_x^2 + k_y^2)
+    if k_perp and k_par are ndarrays, they must have the same shape
+    
+    p_k_linear: 2D array of floats (p_linear,k) in [(Mpc/h)^3], [h/Mpc] respectively
+    Output of init_p_linear, for certain cosmological parameters and k_max = max(k)
+
+    model: String - Default: 'model1'
+    Choice of the fitting model we want to use for p3d computation
+    2 possible options:
+        'model1': According to Mcdonald 2001
+        'model2':According to Arinyo-i-prats 2015
+
+    The following parameters correspond only to 'model2',
+    If 'model1': all corresponding params are hardcoded, can;t be changed in args
+    If 'model2': all params are by default from Tables 2 and 3 - Fiducial at z=2.4, can be changed in args
+
+    q1, q2: Floats - Default: 0.666, 0
+    Isotropic increase in power due to non-linear growth (NL enhancement of PS)
+
+    kv, a_v, b_v: Floats - Default: 0.935003735664152, 0.561, 1.58
+    LOS broadening
+
+    k_p, a_p: Floats - Default: 13.5 #h/Mpc, 2 #fixed for this model
+    Jeans smoothing
+
+    b_delta_squared, beta: Floats - Default: 0.012462846812427325, 1.385
+    Linear bias parameters
+
+    Return:
+    -------
+    p3d_truth: ndarray of floats, or float [(Mpc/h)^3] (same dimensions as k_par and k_perp)
+    Truth p3d at specific (k_par,k_perp) values (cartesian coordinates)
+    """
+
+    if np.shape(k_par) != () and np.shape(k_perp) != ():
+        if np.shape(k_par) != np.shape(k_perp):
+            raise ValueError("Unsupported shapes of k_par and k_perp.")
+    
+    # k and mu computation for k_par and k_perp
+    k = np.sqrt(k_par**2 + k_perp**2)
+
+    mu = np.ones(k.shape)
+    if hasattr(k_par,'__len__') is False:
+        mu[(k>0)] = k_par / k[(k>0)] # because k_par can be either an array or a float, if float k_par[(k>0)] doesn't work
+    else:
+        mu[(k>0)] = k_par[(k>0)] / k[(k>0)]
+
+    # p3d_truth computation
+    p3d_truth = p3d_truth_polar(k=k, mu=mu, p_k_linear=p_k_linear, q1=q1, q2=q2, kv=kv, a_v=a_v, b_v=b_v, k_p=k_p, a_p=_p, 
+                                b_delta_squared=b_delta_squared, beta=beta, model=model)
+
+    return p3d_truth
+
+
 def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, model='model1'):
     """ Computes p_cross_truth from p3d_truth (computed in p3d_truth_polar) by integrating over k_perp for one (k_par,ang_sep) bin
     
