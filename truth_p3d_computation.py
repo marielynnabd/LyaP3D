@@ -237,7 +237,7 @@ def p3d_truth_cartesian(k_par, k_perp, p_k_linear, b_delta_squared=None, beta=No
 
 
 def p3d_truth_polar_new(k, mu, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152, a_v=0.561, b_v=1.58, k_p=13.5, a_p=2, 
-                        b_delta_squared=0.012462846812427325, beta=1.385, model='model1'):
+                        b_delta_squared=0.012462846812427325, beta=1.385, model='model2'):
     """ Computes the deviation from linear theory due to non-linear evolution and P3D truth computation in polar coordinates
 
     Arguments:
@@ -349,7 +349,7 @@ def p3d_truth_polar_new(k, mu, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152,
     return p3d_truth
 
 
-def p3d_truth_cartesian_new(k_par, k_perp, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152, a_v=0.561, b_v=1.58, k_p=13.5, a_p=2,                                         b_delta_squared=0.012462846812427325, beta=1.385, model='model1'):
+def p3d_truth_cartesian_new(k_par, k_perp, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152, a_v=0.561, b_v=1.58, k_p=13.5, a_p=2,                                         b_delta_squared=0.012462846812427325, beta=1.385, model='model2'):
     """ Computes P3D truth in cartesian coordinates
 
     Arguments:
@@ -412,7 +412,7 @@ def p3d_truth_cartesian_new(k_par, k_perp, p_k_linear, q1=0.666, q2=0, kv=0.9350
     return p3d_truth
 
 
-def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152, a_v=0.561, b_v=1.58, k_p=13.5, a_p=2,                                b_delta_squared=0.012462846812427325, beta=1.385, model='model1'):
+def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152, a_v=0.561, b_v=1.58, k_p=13.5, a_p=2,                                b_delta_squared=0.012462846812427325, beta=1.385, model='model2'):
     """ Computes p_cross_truth from p3d_truth (computed in p3d_truth_polar) by integrating over k_perp for one (k_par,ang_sep) bin
     
     Arguments:
