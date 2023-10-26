@@ -8,8 +8,7 @@ import astropy.io.fits
 from astropy.table import Table
 from classy import Class
 import scipy
-from scipy.integrate import quad
-import matplotlib.pyplot as plt
+from astropy.cosmology import FlatLambdaCDM
 
 sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
 from tools import SPEED_LIGHT, LAMBDA_LYA
@@ -455,13 +454,13 @@ def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, model='model1'):
 
     # Computing p3d truth for (k_par, k_perp)
     k_par_grid, k_perp_grid = np.meshgrid(k_par, k_perp)
-    p3d_truth_grid = p3d_truth_cartesian(k_par_grid, k_perp_grid, p_k_linear, model)
+    p3d_truth_cartesian_grid = p3d_truth_cartesian(k_par_grid, k_perp_grid, p_k_linear, model) ## TODO: add new args
 
     p_cross_truth = np.zeros((len(ang_sep), len(k_par)))
     for itheta, theta in enumerate(ang_sep):
         
         # Getting integrand
-        integrand_grid = k_perp_grid * scipy.special.j0(k_perp_grid * theta) * p3d_truth_grid / (2 * np.pi)
+        integrand_grid = k_perp_grid * scipy.special.j0(k_perp_grid * theta) * p3d_truth_cartesian_grid / (2 * np.pi)
         
         # Computing p_cross_truth
         integral = np.trapz(integrand_grid, k_perp, axis=0)  # integrate on k_perp
@@ -476,7 +475,7 @@ def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, model='model1'):
     return p_cross_truth
 
 
-def run_compute_pcross_truth(k_parallel, k_max, ang_sep_bin_centers_to_use, units = 'Mpc/h', model='model1'):
+def run_compute_pcross_truth(k_parallel, k_max, ang_sep_bin_centers_to_use, z, units = 'Mpc/h', model='model1'):
     """ Runs compute_pcross_truth for different (k_par,ang_sep) bins 
         and returns a table of pcross_truth(k_parallel) for different angular separation bins
     
@@ -490,6 +489,9 @@ def run_compute_pcross_truth(k_parallel, k_max, ang_sep_bin_centers_to_use, unit
     
     ang_sep_bin_centers_to_use: Array of floats, units: [degree]
     Angular separations at which we want to compute the integral
+    
+    z: Float
+    Redshift used for conversions
     
     model: String - Default: 'model1'
     Choice of the fitting model we want to use for p3d computation
@@ -518,17 +520,14 @@ def run_compute_pcross_truth(k_parallel, k_max, ang_sep_bin_centers_to_use, unit
         p_cross_truth_table['p_cross_truth'] = np.zeros((len(ang_sep_bin_centers_to_use), len(k_parallel)))
 
     # Computing cosmo used for conversions
-    Omega_m=0.3153
-    Omega_k=0.
+    Omega_m = 0.3153
     h = 0.7
-    Cosmo = constants.Cosmo(Omega_m, Omega_k, H0=100*h)
-    rcomov = Cosmo.get_r_comov
-    distang = Cosmo.get_dist_m
-    hubble = Cosmo.get_hubble
+    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
+    D_comoving = cosmo.comoving_distance(z).value
     
-    # Conversion from degree to Mpc
-    deg_to_Mpc = distang(2.5) * np.pi / 180 # zbin = 2.5
-    ang_sep_bin_centers_to_use_Mpc = ang_sep_bin_centers_to_use * deg_to_Mpc * h # ang sep in Mpc/h not only Mpc
+    # Conversion from degree to Mpc/h
+    deg_to_Mpc_per_h = D_comoving * np.pi * h / 180
+    ang_sep_bin_centers_to_use_Mpc = ang_sep_bin_centers_to_use * deg_to_Mpc_per_h #ang sep in Mpc/h not only Mpc
     
     # Computing p_k_linear used for p3d_truth computation below
     p_k_linear = init_p_linear(k_max*h) # Here k must be in Mpc^-1 and returned p_linear is in [Mpc/h]^3 !!!
@@ -544,20 +543,6 @@ def run_compute_pcross_truth(k_parallel, k_max, ang_sep_bin_centers_to_use, unit
         p_cross_truth_table['p_cross_truth'][iang_sep] = p_cross_truth[iang_sep,:]
             
     print('Truth power spectrum in [Mpc/h] units computation done')
-    
-    if units != 'Mpc/h':
-        print('Converting to Angstrom units')
-        conversion_factor = (hubble(2.5) * LAMBDA_LYA) / SPEED_LIGHT # from Angstrom^-1 to Mpc^-1
-        p_cross_truth_table['k_parallel'] /= conversion_factor
-        p_cross_truth_table['p_cross_truth'] *= conversion_factor
-        p_cross_truth_table['k_parallel'] *= h # Angstrom^-1
-        p_cross_truth_table['p_cross_truth'] /= h # [Angstrom]
-        
-        if units == 'km/s':
-            print('Converting to km/s units')
-            conversion_factor_2 = (1 + 2.5) * LAMBDA_LYA / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
-            p_cross_truth_table['p_cross_truth'] /= conversion_factor_2 # km/s
-            p_cross_truth_table['k_parallel'] *= conversion_factor_2 # k_parallel in [km/s]^-1
 
     return p_cross_truth_table
 
