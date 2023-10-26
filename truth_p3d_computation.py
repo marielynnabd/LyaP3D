@@ -406,7 +406,7 @@ def p3d_truth_cartesian_new(k_par, k_perp, p_k_linear, q1=0.666, q2=0, kv=0.9350
         mu[(k>0)] = k_par[(k>0)] / k[(k>0)]
 
     # p3d_truth computation
-    p3d_truth = p3d_truth_polar(k=k, mu=mu, p_k_linear=p_k_linear, q1=q1, q2=q2, kv=kv, a_v=a_v, b_v=b_v, k_p=k_p, a_p=_p, 
+    p3d_truth = p3d_truth_polar_new(k=k, mu=mu, p_k_linear=p_k_linear, q1=q1, q2=q2, kv=kv, a_v=a_v, b_v=b_v, k_p=k_p, a_p=_p, 
                                 b_delta_squared=b_delta_squared, beta=beta, model=model)
 
     return p3d_truth
