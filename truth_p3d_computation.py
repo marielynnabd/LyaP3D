@@ -62,7 +62,7 @@ def init_p_linear(k_max, z, input_params=None):
     print(cosmo.pars)
     cosmo.compute()
     k_array = np.logspace(-5, np.log10(k_max), num=1000) # h Mpc^-1
-    print('k_max = 'np.max(k_array))
+    print('k_max = ', np.max(k_array))
     p_linear = np.array([cosmo.pk_lin(ki*h, z) for ki in k_array])
 
     p_k_linear = [k_array, p_linear*h**3]
