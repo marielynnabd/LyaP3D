@@ -62,7 +62,7 @@ def init_p_linear(k_max, z, input_params=None):
     print(cosmo.pars)
     cosmo.compute()
     k_array = np.logspace(-5, np.log10(k_max), num=1000) # h Mpc^-1
-    print(np.max(k_array))
+    print('k_max = 'np.max(k_array))
     p_linear = np.array([cosmo.pk_lin(ki*h, z) for ki in k_array])
 
     p_k_linear = [k_array, p_linear*h**3]
@@ -337,6 +337,7 @@ def p3d_truth_polar_new(k, mu, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152,
         delta_squared = (k**3) * p_linear / (2 * np.pi**2)
         D = np.exp(((q1 * delta_squared) + (q2 * delta_squared**2)) * 
                    (1 - ((k**a_v) / kv_to_av) * mu**b_v) - (k / k_p)**a_p)
+
         del(delta_squared)
         
         # p3d_truth compuatation
@@ -406,7 +407,7 @@ def p3d_truth_cartesian_new(k_par, k_perp, p_k_linear, q1=0.666, q2=0, kv=0.9350
         mu[(k>0)] = k_par[(k>0)] / k[(k>0)]
 
     # p3d_truth computation
-    p3d_truth = p3d_truth_polar_new(k=k, mu=mu, p_k_linear=p_k_linear, q1=q1, q2=q2, kv=kv, a_v=a_v, b_v=b_v, k_p=k_p, a_p=_p, 
+    p3d_truth = p3d_truth_polar_new(k=k, mu=mu, p_k_linear=p_k_linear, q1=q1, q2=q2, kv=kv, a_v=a_v, b_v=b_v, k_p=k_p, a_p=a_p, 
                                 b_delta_squared=b_delta_squared, beta=beta, model=model)
 
     return p3d_truth
