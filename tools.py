@@ -4,9 +4,62 @@
 import numpy as np
 from astropy.table import Table, vstack
 import astropy.constants
+from astropy.cosmology import FlatLambdaCDM
 
 SPEED_LIGHT = astropy.constants.c.to('km/s').value  # km/s
 LAMBDA_LYA = 1215.67  # Angstrom
+
+
+def convert_units(data_to_convert, input_units, output_units, z, inverse_units=False):
+    
+    # Computing cosmo used for conversions
+    Omega_m = 0.3153
+    h = 0.7
+    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
+    
+    # Defining all conversion factors
+    conversion_A_kmps = SPEED_LIGHT / ((1 + z) * LAMBDA_LYA)
+    conversion_kmps_A = 1 / conversion_A_kmps
+    conversion_A_Mpcph = SPEED_LIGHT * h / (cosmo.H(z).value * LAMBDA_LYA)
+    conversion_Mpcph_A = 1 / conversion_A_Mpcph
+    conversion_kmps_Mpcph = conversion_kmps_A * conversion_A_Mpcph
+    conversion_Mpcph_kmps = conversion_Mpcph_A * conversion_A_kmps
+
+    # Conversions
+    if input_units == 'Angstrom' and output_units == 'km/s':
+        if inverse_units:
+            converted_data = data_to_convert * conversion_kmps_A
+        else:
+            converted_data = data_to_convert * conversion_A_kmps
+    elif input_units == 'km/s' and output_units == 'Angstrom':
+        if inverse_units:
+            converted_data = data_to_convert * conversion_A_kmps
+        else:
+            converted_data = data_to_convert * conversion_kmps_A
+    elif input_units == 'Angstrom' and output_units == 'Mpc/h':
+        if inverse_units:
+            converted_data = data_to_convert * conversion_Mpcph_A
+        else:
+            converted_data = data_to_convert * conversion_A_Mpcph
+    elif input_units == 'Mpc/h' and output_units == 'Angstrom':
+        if inverse_units:
+            converted_data = data_to_convert * conversion_A_Mpcph
+        else:
+            converted_data = data_to_convert * conversion_Mpcph_A
+    elif input_units == 'km/s' and output_units == 'Mpc/h':
+        if inverse_units:
+            converted_data = data_to_convert * conversion_Mpcph_kmps
+        else:
+            converted_data = data_to_convert * conversion_kmps_Mpcph
+    elif input_units == 'Mpc/h' and output_units == 'km/s':
+        if inverse_units:
+            converted_data = data_to_convert * conversion_kmps_Mpcph
+        else:
+            converted_data = data_to_convert * conversion_Mpcph_kmps
+    else:
+        converted_data = data_to_convert
+    
+    return converted_data
 
 
 def rebin_vector(arr, pack=2, rebin_opt='mean', verbose=True):
