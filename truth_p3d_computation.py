@@ -98,7 +98,7 @@ def p3d_truth_polar(k, mu, p_k_linear, b_delta_squared=None, beta=None, kv=None,
 
     k = np.abs(k)
     mu = np.abs(mu)
-    
+
     # Checking for k and mu shapes
     if np.shape(k) != np.shape(mu):
         raise ValueError("k and mu must have the same shape.")
@@ -107,7 +107,8 @@ def p3d_truth_polar(k, mu, p_k_linear, b_delta_squared=None, beta=None, kv=None,
     if np.shape(k) == ():
         k = np.array(k)
 
-    if np.max(k) > np.max(p_k_linear[0]):
+    # if np.max(k) > np.max(p_k_linear[0]):
+    if np.max(k) > np.max(p_k_linear[0]) + 0.01*np.max(p_k_linear[0]):
         print("Warning, p_k_linear will be extrapolated")
 
     p_linear = np.interp(k, p_k_linear[0], p_k_linear[1])
@@ -281,6 +282,8 @@ def p3d_truth_polar_new(k, mu, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152,
 
     k = np.abs(k)
     mu = np.abs(mu)
+    # print('k', k)
+    # print('mu', mu)
     
     # Checking for k and mu shapes
     if np.shape(k) != np.shape(mu):
@@ -290,7 +293,8 @@ def p3d_truth_polar_new(k, mu, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152,
     if np.shape(k) == ():
         k = np.array(k)
 
-    if np.max(k) > np.max(p_k_linear[0]):
+    # if np.max(k) > np.max(p_k_linear[0]):
+    if np.max(k) > np.max(p_k_linear[0]) + 0.01*np.max(p_k_linear[0]):
         print("Warning, p_k_linear will be extrapolated")
 
     p_linear = np.interp(k, p_k_linear[0], p_k_linear[1])
@@ -350,7 +354,7 @@ def p3d_truth_polar_new(k, mu, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152,
     return p3d_truth
 
 
-def p3d_truth_cartesian_new(k_par, k_perp, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152, a_v=0.561, b_v=1.58, k_p=13.5, a_p=2,                                         b_delta_squared=0.012462846812427325, beta=1.385, model='model2'):
+def p3d_truth_cartesian_new(k_par, k_perp, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152, a_v=0.561, b_v=1.58, k_p=13.5, a_p=2, b_delta_squared=0.012462846812427325, beta=1.385, model='model2'):
     """ Computes P3D truth in cartesian coordinates
 
     Arguments:
@@ -413,7 +417,7 @@ def p3d_truth_cartesian_new(k_par, k_perp, p_k_linear, q1=0.666, q2=0, kv=0.9350
     return p3d_truth
 
 
-def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152, a_v=0.561, b_v=1.58, k_p=13.5, a_p=2,                                b_delta_squared=0.012462846812427325, beta=1.385, model='model2'):
+def compute_pcross_truth(k_par, k_max, ang_sep, p_k_linear, q1=0.666, q2=0, kv=0.935003735664152, a_v=0.561, b_v=1.58, k_p=13.5, a_p=2, b_delta_squared=0.012462846812427325, beta=1.385, model='model2'):
     """ Computes p_cross_truth from p3d_truth (computed in p3d_truth_polar) by integrating over k_perp for one (k_par,ang_sep) bin
     
     Arguments:
