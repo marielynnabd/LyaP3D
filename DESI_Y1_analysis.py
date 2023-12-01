@@ -164,7 +164,7 @@ def get_los_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all',
     with Pool(ncpu) as pool:
         output_get_qso_deltas = pool.starmap(
             get_desi_deltas_singlefile,
-            [[f, qso_cat, lambda_min, lambda_max, include_snr_reso, spec_dir] for f in deltafiles]
+            [[f, qso_cat, lambda_min, lambda_max, include_snr_reso] for f in deltafiles]
         )
 
     for x in output_get_qso_deltas:
