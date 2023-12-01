@@ -9,7 +9,7 @@ import fitsio
 from astropy.table import Table, vstack
 import scipy
 
-from tools import SPEED_LIGHT
+from .tools import SPEED_LIGHT
 
 
 def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
