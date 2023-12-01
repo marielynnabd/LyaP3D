@@ -9,7 +9,8 @@ from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
 
-from tools import SPEED_LIGHT
+# sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
+from .tools import SPEED_LIGHT
 
 
 def get_qso_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
