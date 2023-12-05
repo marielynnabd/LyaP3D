@@ -5,7 +5,7 @@ import os, sys, glob
 import multiprocessing
 from multiprocessing import Pool
 import fitsio
-#from astropy.io import fits
+from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
 
@@ -50,8 +50,12 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
 
     # Reading the TARGETID of each quasar in the catalog
     qso_tid = np.array(qso_cat['TARGETID'])
-    
-    delta_file = fitsio.FITS(delta_file_name)
+
+    fits_flag = 'ASTROPY'  # debug: 'ASTROPY'/'FITSIO'
+    if fits_flag == 'ASTROPY':
+        delta_file = fits.open(delta_file_name)
+    else:
+        delta_file = fitsio.FITS(delta_file_name)
     n_hdu = len(delta_file)-1 # Each delta file contains many hdu (don't take into account HDU0)
     print("DESI delta file ", delta_file_name, ":", n_hdu, "HDUs")
     n_masked = 0
@@ -69,16 +73,29 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
         los_table['MEANSNR'] = np.zeros(n_hdu)
 
     for i in range(n_hdu):
-        delta_i_header = delta_file[i+1].read_header()
-        delta_ID = delta_i_header['TARGETID']
+        if fits_flag == 'ASTROPY':
+            delta_i_header = delta_file[i+1].header
+            delta_i_data = delta_file[i+1].data
+            delta_ID = delta_i_header['TARGETID']
+
+        else:
+            delta_i_header = delta_file[i+1].read_header()
+            delta_ID = delta_i_header['TARGETID']
         
         if delta_ID in qso_tid:
             # Reading data
-            try:
-                delta_los = delta_file[i+1]['DELTA'][:]
-            except:
-                delta_los = delta_file[i+1]['DELTA_BLIND'][:]
-            wavelength = delta_file[i+1]['LAMBDA'][:]
+            if fits_flag == 'ASTROPY':
+                try:
+                    delta_los = np.array(delta_i_data['DELTA'])
+                except:
+                    delta_los = np.array(delta_i_data['DELTA_BLIND'])
+                wavelength = np.array(delta_i_data['LAMBDA'])
+            else:
+                try:
+                    delta_los = delta_file[i+1]['DELTA'][:]
+                except:
+                    delta_los = delta_file[i+1]['DELTA_BLIND'][:]
+                wavelength = delta_file[i+1]['LAMBDA'][:]
             
             # Checking if LAMBDA.min < lambda_min & LAMBDA.max > lambda_max
             if (wavelength.min() < lambda_min) and (wavelength.max() > lambda_max):
@@ -110,6 +127,8 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
             else:
                 print('Warning, no MEANSNR/MEANRESO in delta header.')
 
+    if fits_flag == 'FITSIO':
+        delta_file.close()
     mask_los_used = ~np.isnan(los_table['ra'])
     los_table = los_table[mask_los_used]
     print("DESI delta file", delta_file_name,":",len(los_table),"LOS used")
