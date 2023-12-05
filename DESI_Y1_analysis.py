@@ -73,6 +73,8 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
         los_table['MEANSNR'] = np.zeros(n_hdu)
 
     for i in range(n_hdu):
+        if i%100==0 :
+            print(delta_file_name,": HDU",i,"/",n_hdu)
         if fits_flag == 'ASTROPY':
             delta_i_header = delta_file[i+1].header
             delta_i_data = delta_file[i+1].data
@@ -92,10 +94,10 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
                 wavelength = np.array(delta_i_data['LAMBDA'])
             else:
                 try:
-                    delta_los = delta_file[i+1]['DELTA'][:]
+                    delta_los = delta_file[i+1]['DELTA'][:].astype(float) 
                 except:
-                    delta_los = delta_file[i+1]['DELTA_BLIND'][:]
-                wavelength = delta_file[i+1]['LAMBDA'][:]
+                    delta_los = delta_file[i+1]['DELTA_BLIND'][:].astype(float) 
+                wavelength = delta_file[i+1]['LAMBDA'][:].astype(float) 
             
             # Checking if LAMBDA.min < lambda_min & LAMBDA.max > lambda_max
             if (wavelength.min() < lambda_min) and (wavelength.max() > lambda_max):
