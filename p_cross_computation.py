@@ -49,7 +49,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
     with_covmat: Boolean, Default is True
     Switch on/off covariance matrix computation.
 
-    data_type: String, Options: 'mocks', 'real'
+    data_type: String, Options: 'mocks', 'DESI', 'eBOSS'
     The type of data set on which we want to run the cross power spectrum computation.
         - In the case of mocks: The cross power spectrum will be computed in [Angstrom] by default,
         because when we draw LOS to create mocks, wavelength = (1 + refshift) * lambda_lya [Angstrom].
@@ -85,7 +85,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
     z = mean_wavelength / LAMBDA_LYA - 1
     
     ## if we're in eBOSS case, we have log(lambda) and not lambda so a conversion is required [km/s]
-    if data_type == 'real':
+    if data_type == 'eBOSS':
         mean_wavelength = np.mean(10.**(all_los_table['wavelength'][0]))
         z = mean_wavelength / LAMBDA_LYA - 1
         #all_los_table['wavelength'] *= SPEED_LIGHT * np.log(10.)
@@ -102,18 +102,25 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
         print('snr cut applied')
         snr_los1 = all_los_table['MEANSNR'][ los_pairs_table['index_los1'] ]
         snr_los2 = all_los_table['MEANSNR'][ los_pairs_table['index_los2'] ]
-        snr_mask = (snr_los1 > min_snr_p_cross) & (snr_los2 > min_snr_p_cross)
-        
+        snr_mask = (snr_los1 > min_snr_p_cross) & (snr_los2 > min_snr_p_cross) 
     else:
         snr_mask = np.ones(len(los_pairs_table), dtype=bool)
 
     # Applying resolution mask    
     if max_resolution_p_cross is not None:
-        print("reso cut applied")
-        reso_los1 = all_los_table['MEANRESOLUTION'][ los_pairs_table['index_los1'] ]
-        reso_los2 = all_los_table['MEANRESOLUTION'][ los_pairs_table['index_los2'] ]
-        reso_mask = (reso_los1 < max_resolution_p_cross) & (reso_los2 < max_resolution_p_cross)
-        
+        if data_type == 'mocks':
+            print('Warning, no resolution cut will be applied on p_cross since it is a mock case')
+            reso_mask = np.ones(len(los_pairs_table), dtype=bool)
+        elif data_type == 'eBOSS':
+            print("reso cut applied")
+            reso_los1 = all_los_table['MEANRESOLUTION'][ los_pairs_table['index_los1'] ]
+            reso_los2 = all_los_table['MEANRESOLUTION'][ los_pairs_table['index_los2'] ]
+            reso_mask = (reso_los1 < max_resolution_p_cross) & (reso_los2 < max_resolution_p_cross)
+        elif data_type == 'DESI':
+            print("reso cut applied")
+            reso_los1 = all_los_table['MEANRESO'][ los_pairs_table['index_los1'] ]
+            reso_los2 = all_los_table['MEANRESO'][ los_pairs_table['index_los2'] ]
+            reso_mask = (reso_los1 < max_resolution_p_cross) & (reso_los2 < max_resolution_p_cross)
     else:
         reso_mask = np.ones(len(los_pairs_table), dtype=bool)
 
@@ -163,12 +170,12 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
         p_cross = (fft_delta[index_los1] * np.conj(fft_delta[index_los2])) * delta_lambda / Npix # same units as delta_lambda
         k_parallel = 2 * np.pi * np.fft.rfftfreq(Npix, delta_lambda) # same units as delta_lambda
 
-        if data_type == 'mocks':
-            p_cross = convert_units(p_cross, 'Angstrom', units, z, inverse_units=False)
-            k_parallel = convert_units(k_parallel, 'Angstrom', units, z, inverse_units=True)
-        elif data_type == 'real': # real means eBOSS for now
+        if data_type == 'eBOSS':
             p_cross = convert_units(p_cross, 'km/s', units, z, inverse_units=False)
             k_parallel = convert_units(k_parallel, 'km/s', units, z, inverse_units=True)
+        else: # This is thr case of 'mocks' and 'DESI' where pcross is first computed in Angstrom
+            p_cross = convert_units(p_cross, 'Angstrom', units, z, inverse_units=False)
+            k_parallel = convert_units(k_parallel, 'Angstrom', units, z, inverse_units=True)
 
 #             # If the output unit desired is not Angstrom
 #             if units == 'km/s':
@@ -185,15 +192,17 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
 
         # resolution correction computation
         if resolution_correction == True:
-            delta_v = delta_lambda
-            resolution_los1 = all_los_table['MEANRESOLUTION'][index_los1]
-            resolution_los2 = all_los_table['MEANRESOLUTION'][index_los2]
-            resgrid, kpargrid = np.meshgrid(resolution_los1, k_parallel, indexing='ij')
-            resolution_correction_los1 = boss_resolution_correction(resgrid, kpargrid, delta_v)
-            resgrid, kpargrid = np.meshgrid(resolution_los2, k_parallel, indexing='ij')
-            resolution_correction_los2 = boss_resolution_correction(resgrid, kpargrid, delta_v)
-            resolution_correction_p_cross = resolution_correction_los1 * resolution_correction_los2
-
+            if data_type == 'eBOSS'
+                delta_v = delta_lambda
+                resolution_los1 = all_los_table['MEANRESOLUTION'][index_los1]
+                resolution_los2 = all_los_table['MEANRESOLUTION'][index_los2]
+                resgrid, kpargrid = np.meshgrid(resolution_los1, k_parallel, indexing='ij')
+                resolution_correction_los1 = boss_resolution_correction(resgrid, kpargrid, delta_v)
+                resgrid, kpargrid = np.meshgrid(resolution_los2, k_parallel, indexing='ij')
+                resolution_correction_los2 = boss_resolution_correction(resgrid, kpargrid, delta_v)
+                resolution_correction_p_cross = resolution_correction_los1 * resolution_correction_los2
+            elif data_type == 'DESI': # Just for now and must be modified later == no correction on DESI
+                resolution_correction_p_cross = np.ones((len(index_los1), len(k_parallel)))
         else:
             resolution_correction_p_cross = np.ones((len(index_los1), len(k_parallel)))
 
@@ -203,7 +212,6 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
         error_p_cross = np.zeros(Nk)
 
         for i in range(Nk):
-
             p_cross_array = np.array(p_cross[:,i])
             mean_p_cross[i] = np.mean(p_cross_array.real)
             error_p_cross[i] = np.std(p_cross_array.real) / np.sqrt(N_pairs - 1)
@@ -253,7 +261,7 @@ def compute_mean_p_auto(all_los_table, data_type, units,
     with_covmat: Boolean, Default is True
     Switch on/off covariance matrix computation
 
-    data_type: String, Options: 'mocks', 'real'
+    data_type: String, Options: 'mocks', 'DESI', 'eBOSS'
     The type of data set on which we want to run the auto power spectrum computation.
         - In the case of mocks: The auto power spectrum will be computed in [Angstrom] by default,
         because when we draw LOS to create mocks, wavelength = (1 + refshift) * lambda_lya [Angstrom].
@@ -285,7 +293,7 @@ def compute_mean_p_auto(all_los_table, data_type, units,
     z = mean_wavelength / LAMBDA_LYA - 1
 
     ## if we're in eBOSS case, we have log(lambda) and not lambda so a conversion is required [km/s]
-    if data_type == 'real':
+    if data_type == 'eBOSS':
         mean_wavelength = np.mean(10.**(all_los_table['wavelength'][0]))
         z = mean_wavelength / LAMBDA_LYA - 1
         #all_los_table['wavelength'] *= SPEED_LIGHT * np.log(10.)
@@ -299,15 +307,20 @@ def compute_mean_p_auto(all_los_table, data_type, units,
     if min_snr_p_auto is not None:
         print('snr cut applied')
         snr_mask = (all_los_table['MEANSNR'] > min_snr_p_auto)
-        
     else:
         snr_mask = np.ones(len(all_los_table), dtype=bool)
     
     # Applying resolution mask
     if max_resolution_p_auto is not None:
-        print("reso cut applied")
-        reso_mask = (all_los_table['MEANRESOLUTION'] < max_resolution_p_auto)
-        
+        if data_type == 'mocks':
+            print('Warning, no resolution cut will be applied on p_auto since it is a mock case')
+            reso_mask = np.ones(len(all_los_table), dtype=bool)
+        elif data_type == 'eBOSS':
+            print("reso cut applied")
+            reso_mask = (all_los_table['MEANRESOLUTION'] < max_resolution_p_auto)
+        elif data_type == 'DESI':
+            print("reso cut applied")
+            reso_mask = (all_los_table['MEANRESO'] < max_resolution_p_auto)     
     else:
         reso_mask = np.ones(len(all_los_table), dtype=bool)
 
@@ -338,12 +351,12 @@ def compute_mean_p_auto(all_los_table, data_type, units,
     p_auto = (fft_delta.real**2 + fft_delta.imag**2) * delta_lambda / Npix # same units as delta_lambda
     k_parallel = 2 * np.pi * np.fft.rfftfreq(Npix, delta_lambda) # same units as delta_lambda
 
-    if data_type == 'mocks':
-        p_auto = convert_units(p_auto, 'Angstrom', units, z, inverse_units=False)
-        k_parallel = convert_units(k_parallel, 'Angstrom', units, z, inverse_units=True)
-    elif data_type == 'real': # real means eBOSS for now
+    if data_type == 'eBOSS':
         p_auto = convert_units(p_auto, 'km/s', units, z, inverse_units=False)
         k_parallel = convert_units(k_parallel, 'km/s', units, z, inverse_units=True)
+    else:
+        p_auto = convert_units(p_auto, 'Angstrom', units, z, inverse_units=False)
+        k_parallel = convert_units(k_parallel, 'Angstrom', units, z, inverse_units=True)
 
 #         if units == 'km/s':
 #             conversion_factor = (1 + z) * LAMBDA_LYA / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
@@ -360,12 +373,14 @@ def compute_mean_p_auto(all_los_table, data_type, units,
 
     # resolution correction computation
     if resolution_correction == True:
-        delta_v = delta_lambda
-        resolution_los = all_los_table['MEANRESOLUTION'][ snr_mask & reso_mask ]
-        resgrid, kpargrid = np.meshgrid(resolution_los, k_parallel, indexing='ij')
-        resolution_correction_los = boss_resolution_correction(resgrid, kpargrid, delta_v)
-        resolution_correction_p_auto = resolution_correction_los**2
-
+        if data_type == 'eBOSS'
+            delta_v = delta_lambda
+            resolution_los = all_los_table['MEANRESOLUTION'][ snr_mask & reso_mask ]
+            resgrid, kpargrid = np.meshgrid(resolution_los, k_parallel, indexing='ij')
+            resolution_correction_los = boss_resolution_correction(resgrid, kpargrid, delta_v)
+            resolution_correction_p_auto = resolution_correction_los**2
+        elif data_type == 'DESI': # Just for now and must be modified later == no correction on DESI
+            resolution_correction_p_auto = np.ones((Nlos, len(k_parallel)))
     else:
         resolution_correction_p_auto = np.ones((Nlos, len(k_parallel)))
 
@@ -375,7 +390,6 @@ def compute_mean_p_auto(all_los_table, data_type, units,
     mean_resolution_correction_p_auto = np.zeros(Nk)
 
     for i in range(Nk):
-
         p_auto_array = np.array(p_auto[:,i])
         mean_p_auto[i] = np.mean(p_auto_array)
         error_p_auto[i] = np.std(p_auto_array) / np.sqrt(Nlos - 1)
@@ -548,7 +562,7 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_sca
     k_scale: String
     Scale of wavenumber array to be rebinned if k_binning. Options: 'linear', 'log'
     
-    data_type: String, Options: 'mocks', 'real'
+    data_type: String, Options: 'mocks', 'DESI', 'eBOSS'
     The type of data set on which we want to run the power spectrum computation.
         - In the case of mocks: The power spectrum will be computed in [Angstrom] by default,
         because when we draw LOS to create mocks, wavelength = (1 + refshift) * lambda_lya [Angstrom].
