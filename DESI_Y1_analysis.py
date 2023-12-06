@@ -51,7 +51,7 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
     # Reading the TARGETID of each quasar in the catalog
     qso_tid = np.array(qso_cat['TARGETID'])
 
-    fits_flag = 'ASTROPY'  # debug: 'ASTROPY'/'FITSIO'
+    fits_flag = 'FITSIO'  # debug: 'ASTROPY'/'FITSIO'
     if fits_flag == 'ASTROPY':
         delta_file = fits.open(delta_file_name)
     else:
