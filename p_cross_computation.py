@@ -192,7 +192,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
 
         # resolution correction computation
         if resolution_correction == True:
-            if data_type == 'eBOSS'
+            if data_type == 'eBOSS':
                 delta_v = delta_lambda
                 resolution_los1 = all_los_table['MEANRESOLUTION'][index_los1]
                 resolution_los2 = all_los_table['MEANRESOLUTION'][index_los2]
@@ -373,7 +373,7 @@ def compute_mean_p_auto(all_los_table, data_type, units,
 
     # resolution correction computation
     if resolution_correction == True:
-        if data_type == 'eBOSS'
+        if data_type == 'eBOSS':
             delta_v = delta_lambda
             resolution_los = all_los_table['MEANRESOLUTION'][ snr_mask & reso_mask ]
             resgrid, kpargrid = np.meshgrid(resolution_los, k_parallel, indexing='ij')
