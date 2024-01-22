@@ -88,7 +88,6 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
     if data_type == 'eBOSS':
         mean_wavelength = np.mean(10.**(all_los_table['wavelength'][0]))
         z = mean_wavelength / LAMBDA_LYA - 1
-        #all_los_table['wavelength'] *= SPEED_LIGHT * np.log(10.)
         delta_lambda *= SPEED_LIGHT * np.log(10.)
 
     print("Px: z=", z)
@@ -283,7 +282,6 @@ def compute_mean_p_auto(all_los_table, data_type, units,
     if data_type == 'eBOSS':
         mean_wavelength = np.mean(10.**(all_los_table['wavelength'][0]))
         z = mean_wavelength / LAMBDA_LYA - 1
-        #all_los_table['wavelength'] *= SPEED_LIGHT * np.log(10.)
         delta_lambda *= SPEED_LIGHT * np.log(10.)
 
     delta_los = all_los_table['delta_los']
