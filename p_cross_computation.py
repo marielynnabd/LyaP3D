@@ -177,19 +177,6 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
             p_cross = convert_units(p_cross, 'Angstrom', units, z, inverse_units=False)
             k_parallel = convert_units(k_parallel, 'Angstrom', units, z, inverse_units=True)
 
-#             # If the output unit desired is not Angstrom
-#             if units == 'km/s':
-#                 conversion_factor = (1 + z) * LAMBDA_LYA / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
-#                 p_cross /= conversion_factor # km/s
-#                 k_parallel *= conversion_factor # k_parallel in [km/s]^-1
-
-#             elif units == 'Mpc/h':
-#                 conversion_factor = cosmo.H(z).value * LAMBDA_LYA / SPEED_LIGHT
-#                 p_cross /= conversion_factor # Mpc
-#                 k_parallel *= conversion_factor # Mpc^-1
-#                 p_cross *= h # [Mpc/h]
-#                 k_parallel /= h # [Mpc/h]^-1
-
         # resolution correction computation
         if resolution_correction == True:
             if data_type == 'eBOSS':
@@ -357,19 +344,6 @@ def compute_mean_p_auto(all_los_table, data_type, units,
     else:
         p_auto = convert_units(p_auto, 'Angstrom', units, z, inverse_units=False)
         k_parallel = convert_units(k_parallel, 'Angstrom', units, z, inverse_units=True)
-
-#         if units == 'km/s':
-#             conversion_factor = (1 + z) * LAMBDA_LYA / SPEED_LIGHT # from Angstrom^-1 to [km/s]^-1
-#             p_auto /= conversion_factor # km/s
-#             k_parallel *= conversion_factor # k_parallel in [km/s]^-1
-
-#         elif units == 'Mpc/h':
-#             # from Angstrom^-1 to Mpc^-1:
-#             conversion_factor = cosmo.H(z).value * LAMBDA_LYA / SPEED_LIGHT
-#             p_auto /= conversion_factor # Mpc
-#             k_parallel *= conversion_factor # Mpc^-1
-#             p_auto *= h # [Mpc/h]
-#             k_parallel /= h # [Mpc/h]^-1
 
     # resolution correction computation
     if resolution_correction == True:
