@@ -161,7 +161,7 @@ def _pcross_interpolated(pcross_table, angular_separation_array, n_angsep=1000,
 
 def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular,
                   mean_redshift, k_scale, interp_method='UnivariateSpline', smoothing=0, n_angsep=1000,
-                  compute_errors=False, k_binning=False, n_kbins = 30):
+                  compute_errors=False, compute_covmat=False, k_binning=False, n_kbins = 30):
     """ This function computes the P3D out of the Pcross in cartesian coordinates:
           - It either computes the P3D out of Pcross by direct integration over the angular separation
           - Or it interpolates the Pcross with a spline function before integration
@@ -169,6 +169,8 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
               - This function generates n_iterations of random normal Pcross
               - Interpolates each with a spline and computes random P3Ds
               - Error = std(n_iteration random P3Ds)
+          - If compute_covmat is True: same as compute_error, but for each kpar bin, we compute the covariance
+              of the random P3Ds. Therefore we compute correlations only between different k_perp, at fixed kpar.
 
     Arguments:
     ----------
@@ -201,6 +203,8 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
     compute_errors: Boolean, Default: False
     Compute error_P3D or not
     
+    compute_covmat: Boolean, Default: False
+
     k_binning: Boolean, Default to False
     Rebin P3D using wavenumber_rebin_p3d function
     
@@ -259,6 +263,8 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
     p3d_table['k_parallel'] = np.zeros((len(k_perpandicular), len(k_parallel)))
     p3d_table['P3D'] = np.zeros((len(k_perpandicular), len(k_parallel)))
     p3d_table['error_P3D'] = np.zeros((len(k_perpandicular), len(k_parallel)))
+    if compute_covmat is True:
+        p3d_table['covmat_P3D'] = np.zeros((len(k_perpandicular), len(k_perpandicular), len(k_parallel)))
 
     # Integrate Pcross_interpolated to compute P3D
     for ik_par, k_par in enumerate(k_parallel):  # k_par in [h/Mpc]
@@ -283,6 +289,13 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
 
                 # Filling table
                 p3d_table['error_P3D'][ik_perp,ik_par] = error_P3D
+
+        if compute_covmat is True:
+            random_P3Ds = np.zeros(n_iterations, len(k_perpandicular))
+            for ik_perp, k_perp in enumerate(k_perpandicular):
+                integrand_random_Pcross = 2 * np.pi * angular_separation_array_fine_binning * scipy.special.j0(angular_separation_array_fine_binning * k_perp) * random_Pcross_interpolated[:,:,ik_par]
+                random_P3Ds[:, ik_perp] = np.trapz(integrand_random_Pcross, angular_separation_array_fine_binning, axis=-1)
+            p3d_table['covmat_P3D'][:,:,ik_par] = np.cov(random_P3Ds, rowvar=False)
 
     if k_binning == True:
         p3d_table = wavenumber_rebin_p3d(p3d_table, n_kbins, k_scale)
