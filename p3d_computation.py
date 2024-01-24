@@ -291,7 +291,7 @@ def pcross_to_p3d_cartesian(pcross_table, k_perpandicular, units_k_perpandicular
                 p3d_table['error_P3D'][ik_perp,ik_par] = error_P3D
 
         if compute_covmat is True:
-            random_P3Ds = np.zeros(n_iterations, len(k_perpandicular))
+            random_P3Ds = np.zeros((n_iterations, len(k_perpandicular)))
             for ik_perp, k_perp in enumerate(k_perpandicular):
                 integrand_random_Pcross = 2 * np.pi * angular_separation_array_fine_binning * scipy.special.j0(angular_separation_array_fine_binning * k_perp) * random_Pcross_interpolated[:,:,ik_par]
                 random_P3Ds[:, ik_perp] = np.trapz(integrand_random_Pcross, angular_separation_array_fine_binning, axis=-1)
