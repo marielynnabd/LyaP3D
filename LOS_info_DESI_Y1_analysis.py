@@ -65,7 +65,7 @@ def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
     print("DESI delta file ", delta_file_name, ":", n_hdu, "HDUs")
     n_masked = 0
     
-    # This part must be replaced by the list of tables
+    # This part is to initialize a list of tables where each table corresponds to one redshift bin
     los_info_table_list = []
     for j in range(len(z_center)):
         # Initializing table los_info_table
