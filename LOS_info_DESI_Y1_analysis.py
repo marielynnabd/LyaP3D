@@ -41,7 +41,7 @@ def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
     Return:
     -------
     los_info_table_list: Table or list of tables where each corresponds to one redshift bin
-    Table where each row corresponds to a QSO, containing [z_center, ra, dec, TARGETID] and possibly [MEANSNR, MEANRESO]
+    In each of the tables: each row corresponds to a QSO, containing [z_center, ra, dec, TARGETID] and possibly [MEANSNR, MEANRESO]
     """
     
     # Checking if z_center is array or float
