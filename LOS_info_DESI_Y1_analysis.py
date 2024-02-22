@@ -13,7 +13,7 @@ from .tools import SPEED_LIGHT
 from .DESI_Y1_analysis import _spectral_resolution
 
 
-def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, include_snr_reso=False):
+def get_desi_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, include_snr_reso=False):
     """ This function returns a table of ra, dec, TARGETID, MEANRESO and MEANSNR for each of the QSOs in qso_cat
     Wavelenghts are selected in [lambda_min, lambda_max]
 
