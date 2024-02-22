@@ -37,7 +37,7 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
     Return:
     -------
     los_table: Table
-    Table where each row corresponds to a QSO, containing [ra, dec, wavelengths, deltas]
+    Table where each row corresponds to a QSO, containing [ra, dec, delta_los, wavelength, TARGETID] and possibly [MEANSNR, MEANRESO]
     """
     
     # Reference DESI wavelength grid
