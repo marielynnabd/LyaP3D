@@ -12,7 +12,7 @@ import scipy
 from .tools import SPEED_LIGHT
 
 
-def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, include_snr_reso=False):
+def get_QQ_Y1_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, include_snr_reso=False):
     """ This function returns a table of ra, dec, TARGETID, MEANRESO and MEANSNR for each of the QSOs in qso_cat, for specific redshift bins.3
     Wavelenghts are selected in [lambda_min, lambda_max]
 
@@ -142,7 +142,7 @@ def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
     return los_info_table_list
 
 
-def get_los_info_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, z_center, outputdir, outputfilename, ncpu='all', include_snr_reso=False):
+def get_los_info_table_QQ_Y1(qso_cat, deltas_dir, lambda_min, lambda_max, z_center, outputdir, outputfilename, ncpu='all', include_snr_reso=False):
     """ This function returns a table of ra, dec, TARGETID, MEANRESO, MEANSNR, for each of the QSOs in qso_cat.
     Wavelenghts are selected in [lambda_min, lambda_max]
     Wrapper around get_los_info_singlefile
