@@ -66,8 +66,9 @@ def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
     ## Delta
     _delta = delta_file[3].read() # Has shape (n_los, len(_lambda))
     
+    # Number of masked deltas, i.e. for LOS that include pixel masking and which we don't want to consider in our study for the moment
     n_masked = 0
-    
+
     # Creating a list of tables where each table corresponds to a redshift bin
     los_info_table_list = []
     for j in range(len(z_center)):
@@ -122,7 +123,7 @@ def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
                             #     else:
                             #         print('Warning, no MEANSNR/MEANRESO in delta header.')
                             if include_snr_reso:
-                                if ('MEANSNR' in delta_i_header)
+                                if ('MEANSNR' in delta_i_header):
                                     los_info_table_list[j][i]['MEANSNR'] =  _meta_data['MEANSNR'][i]
                                     # los_info_table_list[j][i]['MEANRESO'] = delta_i_header['MEANRESO'] # Because no MEANRESO in the QQ delta files for now
                                 else:
