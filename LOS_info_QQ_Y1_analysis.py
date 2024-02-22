@@ -93,9 +93,8 @@ def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
 
         if delta_ID in qso_tid:
             # Reading data
-            delta = _delta[i,:]
-            delta = delta[~np.isnan(delta)]
-            wavelength = _lambda[~np.isnan(delta)]
+            delta = _delta[~np.isnan(_delta[i,:])]
+            wavelength = _lambda[~np.isnan(_delta[i,:])]
             
             # 2nd loop over Redshift bins
             for j in range(len(z_center)): # los_info_table_list must have n_zbins lists
