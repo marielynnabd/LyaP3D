@@ -166,16 +166,16 @@ def get_los_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all',
     print("Number of cpus:", multiprocessing.cpu_count())
 
     with Pool(ncpu) as pool:
-        output_get_qso_deltas = pool.starmap(
+        output_get_desi_deltas_singlefile = pool.starmap(
             get_desi_deltas_singlefile,
             [[f, qso_cat, lambda_min, lambda_max, include_snr_reso] for f in deltafiles]
         )
 
-    for x in output_get_qso_deltas:
-        if x is None: print("output of get_qso_deltas is None")  # should not happen in principle
+    for x in output_get_desi_deltas_singlefile:
+        if x is None: print("output of get_desi_deltas_singlefile is None")  # should not happen in principle
 
-    output_get_qso_deltas = [x for x in output_get_qso_deltas if x is not None]
-    los_table = vstack([output_get_qso_deltas[i] for i in range(len(output_get_qso_deltas))])
+    output_get_desi_deltas_singlefile = [x for x in output_get_desi_deltas_singlefile if x is not None]
+    los_table = vstack([output_get_desi_deltas_singlefile[i] for i in range(len(output_get_desi_deltas_singlefile))])
 
     if outputfile is not None:
         los_table.write(outputfile)
