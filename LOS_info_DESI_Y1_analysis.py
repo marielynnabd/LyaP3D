@@ -120,9 +120,13 @@ def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
     # Closing delta_file
     delta_file.close()
 
+    # Removing rows belonging to LOS with masks that were discarded
     for j in range(len(z_center)):
         mask_los_used = ~np.isnan(los_info_table_list[j]['ra'])
         los_info_table_list[j] = los_info_table_list[j][mask_los_used]
+        print("DESI delta file", delta_file_name,":",len(los_info_table_list[j]),"LOS used")
+        if n_masked>0:
+            print("    (",n_masked,"LOS not used presumably due to masked pixels)")
 
     return los_info_table_list
 
