@@ -87,7 +87,7 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
 
         if delta_ID in qso_tid:
             # Reading data
-            delta = _delta[~np.isnan(_delta[i,:])] # Thse cuts are just to remove the nan that exist in QQ mocks
+            delta = _delta[i,:][~np.isnan(_delta[i,:])] # Thse cuts are just to remove the nan that exist in QQ mocks
             wavelength = _lambda[~np.isnan(_delta[i,:])]
             
             # Checking if LAMBDA.min < lambda_min & LAMBDA.max > lambda_max
