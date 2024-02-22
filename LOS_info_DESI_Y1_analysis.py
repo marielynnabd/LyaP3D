@@ -181,20 +181,19 @@ def get_los_info_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, z_cente
     # This does the parallelization over all the delta files in deltas_dir, 
     # and the output_get_los_info_singlefile is a list of los_info_table(s), each table corresponding to one z bin
     with Pool(ncpu) as pool:
-        output_get_los_info_singlefile = pool.starmap(
-            get_los_info_singlefile,
+        output_get_desi_los_info_singlefile = pool.starmap(
+            get_desi_los_info_singlefile,
             [[f, qso_cat, lambda_min, lambda_max, z_center, include_snr_reso] for f in deltafiles]
         )
 
-    for x in output_get_los_info_singlefile:
+    for x in output_get_desi_los_info_singlefile:
         if x is None: print("output of get_los_info_singlefile is None")  # should not happen in principle
 
     los_info_allfiles_allz = [] # A list of tables each corresponding to one redshift bin
     for j in range(len(z_center)):
-        output_get_los_info_singlefile_onez = [x[j] for x in output_get_los_info_singlefile if x[j] is not None] # Here it is a list of tables
-        los_info_table_onez = vstack([output_get_los_info_singlefile_onez[i] for i in range(len(output_get_los_info_singlefile_onez))])
+        output_get_desi_los_info_singlefile_onez = [x[j] for x in output_get_desi_los_info_singlefile if x[j] is not None] # Here it is a list of tables
+        los_info_table_onez = vstack([output_get_desi_los_info_singlefile_onez[i] for i in range(len(output_get_desi_los_info_singlefile_onez))])
         # Writing table for one z bin
-        # outputfile = os.path.join(output_dir, 'los_info_table_desi_'+str(z_center[j])+'.fits.gz')
         outputfile = os.path.join(outputdir, 'output_'+str(z_center[j]), outputfilename)
         los_info_table_onez.write(outputfile)
 
