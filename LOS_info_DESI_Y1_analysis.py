@@ -56,6 +56,7 @@ def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
     # Reading the TARGETID of each quasar in the catalog
     qso_tid = np.array(qso_cat['TARGETID'])
 
+    # Opening delta_file
     delta_file = fitsio.FITS(delta_file_name)
     n_hdu = len(delta_file)-1 # Each delta file contains many hdu (don't take into account HDU0)
     print("DESI delta file ", delta_file_name, ":", n_hdu, "HDUs")
