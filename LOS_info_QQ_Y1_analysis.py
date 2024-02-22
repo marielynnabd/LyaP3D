@@ -133,8 +133,8 @@ def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
                     else:
                         n_masked += 1
 
-        # Closing delta_file
-        delta_file.close()
+    # Closing delta_file
+    delta_file.close()
 
     for j in range(len(z_center)):
         mask_los_used = ~np.isnan(los_info_table_list[j]['ra'])
