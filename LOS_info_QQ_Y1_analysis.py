@@ -122,15 +122,17 @@ def get_QQ_Y1_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_m
                             #     else:
                             #         print('Warning, no MEANSNR/MEANRESO in delta header.')
                             if include_snr_reso:
-                                if ('MEANSNR' in delta_i_header):
+                                try:
                                     los_info_table_list[j][i]['MEANSNR'] =  _meta_data['MEANSNR'][i]
                                     # los_info_table_list[j][i]['MEANRESO'] = delta_i_header['MEANRESO'] # Because no MEANRESO in the QQ delta files for now
-                                else:
+                                except:
                                     print('Warning, no MEANSNR/MEANRESO in delta header.')
                         else:
                             print('Warning')  # should not happen in principle
                     else:
                         n_masked += 1
+        else:
+            print('delta_ID not in qso_tid')
 
     # Closing delta_file
     delta_file.close()
