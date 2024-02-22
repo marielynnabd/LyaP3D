@@ -56,11 +56,7 @@ def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
     # Reading the TARGETID of each quasar in the catalog
     qso_tid = np.array(qso_cat['TARGETID'])
 
-    fits_flag = 'FITSIO'  # debug: 'ASTROPY'/'FITSIO'
-    if fits_flag == 'ASTROPY':
-        delta_file = fits.open(delta_file_name)
-    else:
-        delta_file = fitsio.FITS(delta_file_name)
+    delta_file = fitsio.FITS(delta_file_name)
     n_hdu = len(delta_file)-1 # Each delta file contains many hdu (don't take into account HDU0)
     print("DESI delta file ", delta_file_name, ":", n_hdu, "HDUs")
     n_masked = 0
@@ -82,20 +78,13 @@ def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
     for i in range(n_hdu):
         if i%100==0 :
             print(delta_file_name,": HDU",i,"/",n_hdu)
-        if fits_flag == 'ASTROPY':
-            delta_i_header = delta_file[i+1].header
-            delta_i_data = delta_file[i+1].data
-            delta_ID = delta_i_header['TARGETID']
-        else:
-            delta_i_header = delta_file[i+1].read_header()
-            delta_ID = delta_i_header['TARGETID']
+
+        delta_i_header = delta_file[i+1].read_header()
+        delta_ID = delta_i_header['TARGETID']
         
         if delta_ID in qso_tid:
             # Reading data
-            if fits_flag == 'ASTROPY':
-                wavelength = np.array(delta_i_data['LAMBDA'])
-            else:
-                wavelength = delta_file[i+1]['LAMBDA'][:].astype(float) 
+            wavelength = delta_file[i+1]['LAMBDA'][:].astype(float) 
                 
             for j in range(len(z_center)): # los_info_table_list must have n_zbins lists
                 wavelength_ref = np.arange(wavelength_ref_min, wavelength_ref_max+0.01, delta_lambda) # same all the time but need to be redefined
@@ -127,9 +116,9 @@ def get_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
                         print('Masked LOS')
                         n_masked += 1
 
-    if fits_flag == 'FITSIO':
-        delta_file.close()
-        
+    # Closing delta_file
+    delta_file.close()
+
     for j in range(len(z_center)):
         mask_los_used = ~np.isnan(los_info_table_list[j]['ra'])
         los_info_table_list[j] = los_info_table_list[j][mask_los_used]
