@@ -87,9 +87,8 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
 
         if delta_ID in qso_tid:
             # Reading data
-            delta = _delta[i,:]
-            delta = delta[~np.isnan(delta)] # Thse cuts are just to remove the nan that exist in QQ mocks
-            wavelength = _lambda[~np.isnan(delta)]
+            delta = _delta[~np.isnan(_delta[i,:])] # Thse cuts are just to remove the nan that exist in QQ mocks
+            wavelength = _lambda[~np.isnan(_delta[i,:])]
             
             # Checking if LAMBDA.min < lambda_min & LAMBDA.max > lambda_max
             if (wavelength.min() < lambda_min) and (wavelength.max() > lambda_max):
@@ -121,7 +120,7 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
             else:
                 print('Warning, no MEANSNR/MEANRESO in delta header.')
 
-    # CLosing delta_file
+    # Closing delta_file
     delta_file.close()
 
     mask_los_used = ~np.isnan(los_table['ra'])
