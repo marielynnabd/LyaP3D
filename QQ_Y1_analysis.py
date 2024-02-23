@@ -115,7 +115,7 @@ def get_QQ_Y1_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max
         #         los_table[i]['MEANSNR'] = delta_i_header['MEANSNR']
         #         los_table[i]['MEANRESO'] = delta_i_header['MEANRESO']
         if (not np.isnan(los_table[i]['ra'])) and include_snr_reso:
-            if 'MEANSNR' in delta_i_header:
+            if ('MEANSNR' in delta_i_header):
                 los_table[i]['MEANSNR'] = delta_i_header['MEANSNR']
             else:
                 print('Warning, no MEANSNR/MEANRESO in delta header.')
