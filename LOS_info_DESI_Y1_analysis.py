@@ -125,6 +125,9 @@ def get_desi_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_ma
                     # otherwise it means that there are masked pixels and we don't want to consider this delta in the calculation
                     if len(wavelength[mask_wavelength]) == len(wavelength_ref_zbin):
                         if np.allclose(wavelength[mask_wavelength], wavelength_ref_zbin):
+                    # # Just for the pairs counting test of Stat_MaskedLOS to see if we want to keep or discard masked LOS
+                    # if 1 == 1: 
+                    #     if 1 == 1:
                             los_info_table_list[j][i]['ra'] = delta_i_header['RA'] * 180 / np.pi  # must convert rad --> dec.
                             los_info_table_list[j][i]['dec'] = delta_i_header['DEC'] * 180 / np.pi
                             los_info_table_list[j][i]['TARGETID'] = delta_ID
