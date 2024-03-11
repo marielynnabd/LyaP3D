@@ -66,7 +66,7 @@ def get_desi_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_ma
     delta_lambda = 0.8  # AA
     wavelength_ref = np.arange(wavelength_ref_min, wavelength_ref_max+0.01, delta_lambda) # same all the time but need to be redefined
     
-    # Masking pixels if masks is not none
+    # Masking pixels if masks are not none
     if (lambda_pixelmask_min is not None) & (lambda_pixelmask_max is not None):
         if (len(lambda_pixelmask_min)==len(lambda_pixelmask_max)):
             for i in range(len(lambda_pixelmask_min)): # or lambda_pixelmask_max, it's the same
@@ -110,7 +110,6 @@ def get_desi_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_ma
             wavelength = delta_file[i+1]['LAMBDA'][:].astype(float) 
                 
             for j in range(len(z_center)): # los_info_table_list must have n_zbins lists
-                # wavelength_ref = np.arange(wavelength_ref_min, wavelength_ref_max+0.01, delta_lambda) # same all the time but need to be redefined
                 wavelength_ref_zbin = wavelength_ref # Where wavelength_ref is one for all zbins
                 mask_wavelength_ref_zbin = (wavelength_ref_zbin > lambda_min[j]) & (wavelength_ref_zbin < lambda_max[j])
                 wavelength_ref_zbin = wavelength_ref_zbin[mask_wavelength_ref_zbin]
