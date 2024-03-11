@@ -12,8 +12,9 @@ import scipy
 from .tools import SPEED_LIGHT
 
 
-def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
-                              include_snr_reso=False):
+def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, 
+                               lambda_pixelmask_min=None, lambda_pixelmask_max=None, 
+                               include_snr_reso=False):
     """ This function returns a table of ra, dec, wavelength and delta for each of the QSOs in qso_cat.
     Wavelenghts are selected in [lambda_min, lambda_max]
 
@@ -25,11 +26,21 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
     qso_cat: Table
     QSO catalog for which we want to find the corresponding deltas, using TARGETID
 
-    lambda_min: Float
-    Value of the minimum forest wavelength required
+    lambda_min: Float or array of floats
+    Value of the minimum forest wavelength required per redshift bin
 
-    lambda_max: Float
-    Value of the maximum forest wavelength required
+    lambda_max: Float or array of floats
+    Value of the maximum forest wavelength required per redshift bin
+    
+    z_center: Float or array of floats
+    Value of z center per redshift bin
+    PS: lambda_min, lambda_max and z_center must have the same length
+    
+    lambda_pixelmask_min: Float or array of floats
+    Minimum of wavelength intervals to be masked. This will be applied not on data, but on wavelength_ref
+    
+    lambda_pixelmask_max: Float or array of floats
+    Maximum of wavelength intervals to be masked. This will be applied not on data, but on wavelength_ref
 
     include_snr_reso: bool, default False
     If set, includes MEANRESO and MEANSNR from the delta's headers, to the los_table
@@ -37,16 +48,27 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
     Return:
     -------
     los_table: Table
-    Table where each row corresponds to a QSO, containing [ra, dec, delta_los, wavelength, TARGETID] and possibly [MEANSNR, MEANRESO]
+    los_info_table_list: Table or list of tables where each corresponds to one redshift bin
+    In each of the tables: each row corresponds to a QSO, containing [ra, dec, delta_los, wavelength, TARGETID] and possibly [MEANSNR, MEANRESO]
     """
+    
+    # Checking if z_center is array or float
+    if hasattr(z_center,'__len__') is False:
+        z_center = np.array([z_center])
+        
+    # Checking if lambda_pixelmask_min and lambda_pixelmask_max are arrays or floats, only if they're not none
+    if hasattr(lambda_pixelmask_min,'__len__') is False:
+        lambda_pixelmask_min = np.array([lambda_pixelmask_min])
+    if hasattr(lambda_pixelmask_max,'__len__') is False:
+        lambda_pixelmask_max = np.array([lambda_pixelmask_max])
     
     # Reference DESI wavelength grid
     wavelength_ref_min = 3600.  # AA
     wavelength_ref_max = 9824.  # AA
     delta_lambda = 0.8  # AA
     wavelength_ref = np.arange(wavelength_ref_min, wavelength_ref_max+0.01, delta_lambda)
-    mask_wavelength_ref = (wavelength_ref > lambda_min) & (wavelength_ref < lambda_max)
-    wavelength_ref = wavelength_ref[mask_wavelength_ref]
+    # mask_wavelength_ref = (wavelength_ref > lambda_min) & (wavelength_ref < lambda_max)
+    # wavelength_ref = wavelength_ref[mask_wavelength_ref]
 
     # Reading the TARGETID of each quasar in the catalog
     qso_tid = np.array(qso_cat['TARGETID'])
@@ -57,18 +79,40 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
     print("DESI delta file ", delta_file_name, ":", n_hdu, "HDUs")
     n_masked = 0
 
-    # Initializing table los_table
-    los_table = Table()
-    los_table['ra'] = np.ones(n_hdu) * np.nan
-    los_table['dec'] = np.ones(n_hdu) * np.nan
-    los_table['delta_los'] = np.zeros((n_hdu, len(wavelength_ref)))
-    los_table['wavelength'] = np.zeros((n_hdu, len(wavelength_ref)))
-    los_table['TARGETID'] = np.zeros(n_hdu, dtype='>i8')
+#     # Initializing table los_table
+#     los_table = Table()
+#     los_table['ra'] = np.ones(n_hdu) * np.nan
+#     los_table['dec'] = np.ones(n_hdu) * np.nan
+#     los_table['delta_los'] = np.zeros((n_hdu, len(wavelength_ref)))
+#     los_table['wavelength'] = np.zeros((n_hdu, len(wavelength_ref)))
+#     los_table['TARGETID'] = np.zeros(n_hdu, dtype='>i8')
 
-    if include_snr_reso:
-        los_table['MEANRESO'] = np.zeros(n_hdu)
-        los_table['MEANSNR'] = np.zeros(n_hdu)
+#     if include_snr_reso:
+#         los_table['MEANRESO'] = np.zeros(n_hdu)
+#         los_table['MEANSNR'] = np.zeros(n_hdu)
+        
+    # This part is to initialize a list of tables where each table corresponds to one redshift bin
+    los_table_list = []
+    for j in range(len(z_center)):
+        # Selecting the part of wavelength_ref that corresponds to the z bin
+        wavelength_ref_zbin = wavelength_ref # Where wavelength_ref is one for all zbins
+        mask_wavelength_ref_zbin = (wavelength_ref_zbin > lambda_min[j]) & (wavelength_ref_zbin < lambda_max[j])
+        wavelength_ref_zbin = wavelength_ref_zbin[mask_wavelength_ref_zbin]
 
+        # Initializing table los_info_table
+        los_table = Table()
+        los_table['z_center'] = np.ones(n_hdu) * z_center[j]
+        los_table['ra'] = np.ones(n_hdu) * np.nan
+        los_table['dec'] = np.ones(n_hdu) * np.nan
+        los_table['TARGETID'] = np.zeros(n_hdu, dtype='>i8')
+        los_table['delta_los'] = np.zeros((n_hdu, len(wavelength_ref_zbin)))
+        los_table['wavelength'] = np.zeros((n_hdu, len(wavelength_ref_zbin)))
+        if include_snr_reso:
+            los_table['MEANRESO'] = np.zeros(n_hdu)
+            los_table['MEANSNR'] = np.zeros(n_hdu)
+        los_table_list.append(los_table)
+
+    # Looping over hdus    
     for i in range(n_hdu):
         if i%100==0 :
             print(delta_file_name,": HDU",i,"/",n_hdu)
@@ -82,46 +126,64 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
                 delta_los = delta_file[i+1]['DELTA'][:].astype(float) 
             except:
                 delta_los = delta_file[i+1]['DELTA_BLIND'][:].astype(float) 
-            wavelength = delta_file[i+1]['LAMBDA'][:].astype(float) 
+            wavelength = delta_file[i+1]['LAMBDA'][:].astype(float)
+
+        # Looping over zbins 
+        for j in range(len(z_center)): # los_info_table_list must have n_zbins lists
+            # Selecting wavelength_ref corresponding to zbin
+            wavelength_ref_zbin = wavelength_ref # Where wavelength_ref is one for all zbins
+            mask_wavelength_ref_zbin = (wavelength_ref_zbin > lambda_min[j]) & (wavelength_ref_zbin < lambda_max[j])
+            wavelength_ref_zbin = wavelength_ref_zbin[mask_wavelength_ref_zbin]
+
+            # Masking pixels if masks are not none
+            if (lambda_pixelmask_min is not None) & (lambda_pixelmask_max is not None):
+                if (len(lambda_pixelmask_min)==len(lambda_pixelmask_max)):
+                    for i_pixelmask in range(len(lambda_pixelmask_min)): # or lambda_pixelmask_max, it's the same
+                        pixels_to_mask = (wavelength_ref > lambda_pixelmask_min[i_pixelmask]) & (wavelength_ref < lambda_pixelmask_max[i_pixelmask])
+                        wavelength_ref_zbin = wavelength_ref_zbin[~pixels_to_mask]
+                else:
+                    print('lambda_pixelmask_min and lambda_pixelmask_max have different lengths, therefore the mask is not taken into acccount')
             
+            # This part is to check if the delta must be included in the redshift bin or not:
             # Checking if LAMBDA.min < lambda_min & LAMBDA.max > lambda_max
-            if (wavelength.min() < lambda_min) and (wavelength.max() > lambda_max):
+            if (wavelength.min() < lambda_min[j]) and (wavelength.max() > lambda_max[j]):
                 # Define wavelength mask
-                mask_wavelength = (wavelength > lambda_min) & (wavelength < lambda_max)
+                mask_wavelength = (wavelength > lambda_min[j]) & (wavelength < lambda_max[j])
 
                 # Checking that the masked wavelength and wavelength_ref have the same shape
-                # otherwise it means that there are masked pixels
-                # and we don't want to consider this delta in the calculation
-                if len(wavelength[mask_wavelength]) == len(wavelength_ref):
-                    if np.allclose(wavelength[mask_wavelength], wavelength_ref):
-                        los_table[i]['ra'] = delta_i_header['RA'] * 180 / np.pi  # must convert rad --> dec.
-                        los_table[i]['dec'] = delta_i_header['DEC'] * 180 / np.pi
-                        los_table[i]['delta_los'] = delta_los[mask_wavelength]
-                        los_table[i]['wavelength'] = wavelength[mask_wavelength]
-                        los_table[i]['TARGETID'] = delta_ID
+                # otherwise it means that there are masked pixels and we don't want to consider this delta in the calculation
+                if len(wavelength[mask_wavelength]) == len(wavelength_ref_zbin):
+                    if np.allclose(wavelength[mask_wavelength], wavelength_ref_zbin):
+                        los_table_list[j][i]['ra'] = delta_i_header['RA'] * 180 / np.pi  # must convert rad --> dec.
+                        los_table_list[j][i]['dec'] = delta_i_header['DEC'] * 180 / np.pi
+                        los_table_list[j][i]['TARGETID'] = delta_ID
+                        # Here we must patch wavelength and delta_los before adding to the table
+                        los_table_list[j][i,:]['delta_los'] = delta_los[mask_wavelength]
+                        los_table_list[j][i,:]['wavelength'] = wavelength[mask_wavelength]
+                        if include_snr_reso:
+                            if ('MEANSNR' in delta_i_header) and ('MEANRESO' in delta_i_header):
+                                los_table_list[j][i]['MEANSNR'] = delta_i_header['MEANSNR']
+                                los_table_list[j][i]['MEANRESO'] = delta_i_header['MEANRESO']
+                            else:
+                                print('Warning, no MEANSNR/MEANRESO in delta header.')
                     else:
                         print('Warning')  # should not happen in principle
                 else:
+                    print('Masked LOS')
                     n_masked += 1
-
-        if (not np.isnan(los_table[i]['ra'])) and include_snr_reso:
-            if ('MEANSNR' in delta_i_header) and ('MEANRESO' in delta_i_header):
-                los_table[i]['MEANSNR'] = delta_i_header['MEANSNR']
-                los_table[i]['MEANRESO'] = delta_i_header['MEANRESO']
-            else:
-                print('Warning, no MEANSNR/MEANRESO in delta header.')
 
     # Closing delta_file
     delta_file.close()
     
     # Removing rows belonging to LOS with masks that were discarded
-    mask_los_used = ~np.isnan(los_table['ra'])
-    los_table = los_table[mask_los_used]
-    print("DESI delta file", delta_file_name,":",len(los_table),"LOS used")
-    if n_masked>0:
-        print("    (",n_masked,"LOS not used presumably due to masked pixels)")
+    for j in range(len(z_center)):
+        mask_los_used = ~np.isnan(los_table_list[j]['ra'])
+        los_table_list[j] = los_table_list[j][mask_los_used]
+        print("DESI delta file", delta_file_name,":",len(los_table_list[j]),"LOS used")
+        if n_masked>0:
+            print("    (",n_masked,"LOS not used presumably due to masked pixels)")
 
-    return los_table
+    return los_table_list
 
 
 def get_los_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all',
