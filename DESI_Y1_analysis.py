@@ -153,8 +153,8 @@ def get_desi_los_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
                         wavelength_patched, delta_los_patched = patch_deltas(wavelength[mask_wavelength], delta_los[mask_wavelength], delta_lambda)
 
                         # Adding patched arrays to table
-                        los_table_list[j][i,:]['delta_los'] = delta_los_patched
-                        los_table_list[j][i,:]['wavelength'] = wavelength_patched
+                        los_table_list[j][i]['delta_los'] = delta_los_patched
+                        los_table_list[j][i]['wavelength'] = wavelength_patched
 
                         # Adding MEANSNR and MEANRESO of LOS to los_table
                         if include_snr_reso:
@@ -166,7 +166,7 @@ def get_desi_los_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
                     else:
                         print('Warning')  # should not happen in principle
                 else:
-                    print('Masked LOS')
+                    # print('Masked LOS')
                     n_masked += 1
 
     # Closing delta_file
@@ -269,7 +269,7 @@ def get_los_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, z_center, ou
         outputfile = os.path.join(outputdir, 'output_'+str(z_center[j]), outputfilename)
         los_table_onez.write(outputfile)
 
-        los_allfiles_allz.append(los_info_table_onez)
+        los_allfiles_allz.append(los_table_onez)
 
     return los_allfiles_allz
 
