@@ -283,29 +283,3 @@ def patch_deltas(lambda_array, delta_array, delta_lambda):
 
     return lambda_array_new, delta_array_new
 
-
-def _spectral_resolution(wdisp, fiberid, log_lambda):
-    # adapted from picca/py/picca/delta_extraction/utils_pk1d.py
-    # This function has to be adapted to DESI
-    reso = wdisp * SPEED_LIGHT * 1.0e-4 * np.log(10.)
-
-    lambda_ = np.power(10., log_lambda)
-    # compute the wavelength correction
-    correction = 1.267 - 0.000142716 * lambda_ + 1.9068e-08 * lambda_ * lambda_
-    correction[lambda_ > 6000.0] = 1.097
-
-    # add the fiberid correction
-    # fiberids greater than 500 corresponds to the second spectrograph
-    fiberid = fiberid % 500
-    if fiberid < 100:
-        correction = (1. + (correction - 1) * .25 + (correction - 1) * .75 *
-                      (fiberid) / 100.)
-    elif fiberid > 400:
-        correction = (1. + (correction - 1) * .25 + (correction - 1) * .75 *
-                      (500 - fiberid) / 100.)
-
-    # apply the correction
-    reso *= correction
-
-    return reso
-
