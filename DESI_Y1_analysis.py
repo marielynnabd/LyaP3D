@@ -130,7 +130,7 @@ def get_desi_los_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
             if (lambda_pixelmask_min is not None) & (lambda_pixelmask_max is not None):
                 if (len(lambda_pixelmask_min)==len(lambda_pixelmask_max)):
                     for i_pixelmask in range(len(lambda_pixelmask_min)): # or lambda_pixelmask_max, it's the same
-                        pixels_to_mask = (wavelength_ref > lambda_pixelmask_min[i_pixelmask]) & (wavelength_ref < lambda_pixelmask_max[i_pixelmask])
+                        pixels_to_mask = (wavelength_ref_zbin > lambda_pixelmask_min[i_pixelmask]) & (wavelength_ref_zbin < lambda_pixelmask_max[i_pixelmask])
                         wavelength_ref_zbin = wavelength_ref_zbin[~pixels_to_mask]
                 else:
                     print('lambda_pixelmask_min and lambda_pixelmask_max have different lengths, therefore the mask is not taken into acccount')
