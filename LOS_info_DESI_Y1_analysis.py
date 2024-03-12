@@ -200,7 +200,7 @@ def get_los_info_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, z_cente
     Return:
     -------
     los_info_allfiles_allz: Table or list of tables where each corresponds to one redshift bin
-    Table where each row corresponds to a QSO, containing [ra, dec, TARGETID, MEANSNR]
+    In each of the tables: each row corresponds to a QSO, containing [z_center, ra, dec, TARGETID] and possibly [MEANSNR, MEANRESO]
     """
 
     searchstr = '*'
