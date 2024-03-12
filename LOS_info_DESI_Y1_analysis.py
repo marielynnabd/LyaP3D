@@ -221,7 +221,7 @@ def get_los_info_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, z_cente
         )
 
     for x in output_get_desi_los_info_singlefile:
-        if x is None: print("output of get_los_info_singlefile is None")  # should not happen in principle
+        if x is None: print("output of get_desi_los_info_singlefile is None")  # should not happen in principle
 
     los_info_allfiles_allz = [] # A list of tables each corresponding to one redshift bin
     for j in range(len(z_center)):
