@@ -14,7 +14,10 @@ sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
 from tools import SPEED_LIGHT
 
 
-def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, 
+# def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, 
+#                                lambda_pixelmask_min=None, lambda_pixelmask_max=None, 
+#                                include_snr_reso=False):
+def get_desi_los_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, 
                                lambda_pixelmask_min=None, lambda_pixelmask_max=None, 
                                include_snr_reso=False):
     """ This function returns a table of ra, dec, wavelength and delta for each of the QSOs in qso_cat.
@@ -180,8 +183,7 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
     return los_table_list
 
 
-def get_los_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all',
-                       outputfile=None, include_snr_reso=False):
+def get_los_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, z_center, outputdir, outputfilename, lambda_pixelmask_min=None, lambda_pixelmask_max=None, ncpu='all', include_snr_reso=False):
     """ This function returns a table of ra, dec, wavelength and delta for each of the QSOs in qso_cat.
     Wavelenghts are selected in [lambda_min, lambda_max]
     Wrapper around get_qso_deltas_singlefile
@@ -199,17 +201,34 @@ def get_los_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all',
 
     lambda_max: Float
     Value of the maximum forest wavelength required
+    
+    z_center: Float or array of floats
+    Value of z center per redshift bin
+    PS: lambda_min, lambda_max and z_center must have the same length
+    
+    outputdir: string, default None
+    Write LOS table to file
+    
+    outputfilename: string, default None
+    Name of the file
+    
+    lambda_pixelmask_min: Float or array of floats
+    Minimum of wavelength intervals to be masked. This will be applied not on data, but on wavelength_ref
+    
+    lambda_pixelmask_max: Float or array of floats
+    Maximum of wavelength intervals to be masked. This will be applied not on data, but on wavelength_ref
 
     ncpu: int or 'all'
     For multiprocessing.Pool
-
-    outputfile: string, default None
-    Write LOS table to file
+    
+    include_snr_reso: bool, default False
+    If set, includes MEANRESO and MEANSNR from the delta's headers, to the los_table
 
     Return:
     -------
-    los_table: Table
-    Table where each row corresponds to a QSO, containing [ra, dec, wavelengths, deltas]
+    los_allfiles_allz: Table or list of tables where each corresponds to one redshift bin
+    In each of the tables: each row corresponds to a QSO, containing [ra, dec, delta_los, wavelength, TARGETID] and possibly [MEANSNR, MEANRESO]
+    
     """
 
     searchstr = '*'
@@ -221,22 +240,46 @@ def get_los_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all',
     print("Nb of delta files:", len(deltafiles))
     print("Number of cpus:", multiprocessing.cpu_count())
 
+    # with Pool(ncpu) as pool:
+    #     output_get_desi_deltas_singlefile = pool.starmap(
+    #         get_desi_deltas_singlefile,
+    #         [[f, qso_cat, lambda_min, lambda_max, include_snr_reso] for f in deltafiles]
+    #     )
+    
+    # This does the parallelization over all the delta files in deltas_dir, 
+    # and the output_get_los_info_singlefile is a list of los_info_table(s), each table corresponding to one z bin
+
     with Pool(ncpu) as pool:
-        output_get_desi_deltas_singlefile = pool.starmap(
-            get_desi_deltas_singlefile,
-            [[f, qso_cat, lambda_min, lambda_max, include_snr_reso] for f in deltafiles]
+        output_get_desi_los_singlefile = pool.starmap(
+            get_desi_los_singlefile,
+            [[f, qso_cat, lambda_min, lambda_max, z_center, lambda_pixelmask_min, lambda_pixelmask_max, include_snr_reso] for f in deltafiles]
         )
+        
+    for x in output_get_desi_los_singlefile:
+        if x is None: print("output of get_desi_los_singlefile is None")  # should not happen in principle
 
-    for x in output_get_desi_deltas_singlefile:
-        if x is None: print("output of get_desi_deltas_singlefile is None")  # should not happen in principle
+    # for x in output_get_desi_deltas_singlefile:
+    #     if x is None: print("output of get_desi_deltas_singlefile is None")  # should not happen in principle
+    
+    los_allfiles_allz = [] # A list of tables each corresponding to one redshift bin
+    for j in range(len(z_center)):
+        output_get_desi_los_singlefile_onez = [x[j] for x in output_get_desi_los_singlefile if x[j] is not None] # Here it is a list of tables
+        los_table_onez = vstack([output_get_desi_los_singlefile_onez[i] for i in range(len(output_get_desi_los_singlefile_onez))])
+        # Writing table for one z bin
+        outputfile = os.path.join(outputdir, 'output_'+str(z_center[j]), outputfilename)
+        los_table_onez.write(outputfile)
 
-    output_get_desi_deltas_singlefile = [x for x in output_get_desi_deltas_singlefile if x is not None]
-    los_table = vstack([output_get_desi_deltas_singlefile[i] for i in range(len(output_get_desi_deltas_singlefile))])
+        los_allfiles_allz.append(los_info_table_onez)
 
-    if outputfile is not None:
-        los_table.write(outputfile)
+    return los_allfiles_allz
 
-    return los_table
+#     output_get_desi_deltas_singlefile = [x for x in output_get_desi_deltas_singlefile if x is not None]
+#     los_table = vstack([output_get_desi_deltas_singlefile[i] for i in range(len(output_get_desi_deltas_singlefile))])
+
+#     if outputfile is not None:
+#         los_table.write(outputfile)
+
+#     return los_table
 
 
 def patch_deltas(lambda_array, delta_array, delta_lambda):
