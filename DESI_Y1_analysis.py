@@ -9,7 +9,9 @@ from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
 
-from .tools import SPEED_LIGHT
+# from .tools import SPEED_LIGHT
+sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
+from tools import SPEED_LIGHT
 
 
 def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, 
@@ -61,14 +63,6 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
         lambda_pixelmask_min = np.array([lambda_pixelmask_min])
     if hasattr(lambda_pixelmask_max,'__len__') is False:
         lambda_pixelmask_max = np.array([lambda_pixelmask_max])
-    
-    # Reference DESI wavelength grid
-    wavelength_ref_min = 3600.  # AA
-    wavelength_ref_max = 9824.  # AA
-    delta_lambda = 0.8  # AA
-    wavelength_ref = np.arange(wavelength_ref_min, wavelength_ref_max+0.01, delta_lambda)
-    # mask_wavelength_ref = (wavelength_ref > lambda_min) & (wavelength_ref < lambda_max)
-    # wavelength_ref = wavelength_ref[mask_wavelength_ref]
 
     # Reading the TARGETID of each quasar in the catalog
     qso_tid = np.array(qso_cat['TARGETID'])
@@ -79,18 +73,12 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
     print("DESI delta file ", delta_file_name, ":", n_hdu, "HDUs")
     n_masked = 0
 
-#     # Initializing table los_table
-#     los_table = Table()
-#     los_table['ra'] = np.ones(n_hdu) * np.nan
-#     los_table['dec'] = np.ones(n_hdu) * np.nan
-#     los_table['delta_los'] = np.zeros((n_hdu, len(wavelength_ref)))
-#     los_table['wavelength'] = np.zeros((n_hdu, len(wavelength_ref)))
-#     los_table['TARGETID'] = np.zeros(n_hdu, dtype='>i8')
+    # Reference DESI wavelength grid
+    wavelength_ref_min = 3600.  # AA
+    wavelength_ref_max = 9824.  # AA
+    delta_lambda = 0.8  # AA
+    wavelength_ref = np.arange(wavelength_ref_min, wavelength_ref_max+0.01, delta_lambda)
 
-#     if include_snr_reso:
-#         los_table['MEANRESO'] = np.zeros(n_hdu)
-#         los_table['MEANSNR'] = np.zeros(n_hdu)
-        
     # This part is to initialize a list of tables where each table corresponds to one redshift bin
     los_table_list = []
     for j in range(len(z_center)):
@@ -105,7 +93,7 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
         los_table['ra'] = np.ones(n_hdu) * np.nan
         los_table['dec'] = np.ones(n_hdu) * np.nan
         los_table['TARGETID'] = np.zeros(n_hdu, dtype='>i8')
-        los_table['delta_los'] = np.zeros((n_hdu, len(wavelength_ref_zbin)))
+        los_table['delta_los'] = np.zeros((n_hdu, len(wavelength_ref_zbin))) # len of delta_los and wavelength is = len of wavelength_ref_zbin before masking pixels due to skylines since deltas will be patched
         los_table['wavelength'] = np.zeros((n_hdu, len(wavelength_ref_zbin)))
         if include_snr_reso:
             los_table['MEANRESO'] = np.zeros(n_hdu)
@@ -135,7 +123,7 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
             mask_wavelength_ref_zbin = (wavelength_ref_zbin > lambda_min[j]) & (wavelength_ref_zbin < lambda_max[j])
             wavelength_ref_zbin = wavelength_ref_zbin[mask_wavelength_ref_zbin]
 
-            # Masking pixels if masks are not none
+            # Masking pixels in wavelength_ref_zbin if masks are not none
             if (lambda_pixelmask_min is not None) & (lambda_pixelmask_max is not None):
                 if (len(lambda_pixelmask_min)==len(lambda_pixelmask_max)):
                     for i_pixelmask in range(len(lambda_pixelmask_min)): # or lambda_pixelmask_max, it's the same
@@ -157,9 +145,15 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
                         los_table_list[j][i]['ra'] = delta_i_header['RA'] * 180 / np.pi  # must convert rad --> dec.
                         los_table_list[j][i]['dec'] = delta_i_header['DEC'] * 180 / np.pi
                         los_table_list[j][i]['TARGETID'] = delta_ID
+
                         # Here we must patch wavelength and delta_los before adding to the table
-                        los_table_list[j][i,:]['delta_los'] = delta_los[mask_wavelength]
-                        los_table_list[j][i,:]['wavelength'] = wavelength[mask_wavelength]
+                        wavelength_patched, delta_los_patched = patch_deltas(wavelength[mask_wavelength], delta_los[mask_wavelength], delta_lambda)
+
+                        # Adding patched arrays to table
+                        los_table_list[j][i,:]['delta_los'] = delta_los_patched
+                        los_table_list[j][i,:]['wavelength'] = wavelength_patched
+
+                        # Adding MEANSNR and MEANRESO of LOS to los_table
                         if include_snr_reso:
                             if ('MEANSNR' in delta_i_header) and ('MEANRESO' in delta_i_header):
                                 los_table_list[j][i]['MEANSNR'] = delta_i_header['MEANSNR']
@@ -174,7 +168,7 @@ def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
 
     # Closing delta_file
     delta_file.close()
-    
+
     # Removing rows belonging to LOS with masks that were discarded
     for j in range(len(z_center)):
         mask_los_used = ~np.isnan(los_table_list[j]['ra'])
@@ -245,9 +239,54 @@ def get_los_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, ncpu='all',
     return los_table
 
 
+def patch_deltas(lambda_array, delta_array, delta_lambda):
+    """ This function patches deltas of masked LOS by zeros and the correspinding wavelength by the value of the wavelength of the masked pixel.
+    Having a regular grid is required for the fft analysis in the P_cross computation.
+    PS: THIS CODE IS COPIED FROM PICCA!!
+
+    Arguments:
+    ----------
+    lambda_array: Array
+    Array of LOS wavelength. It can be both linear or log spaced.
+
+    delta_array: Array
+    Array of LOS delta.
+
+    delta_lambda: Float
+    Pixel size. Equal to 0.8 AA in the case of DESI.
+
+    Return:
+    -------
+    lambda_array_new: Array
+    Array of LOS wavelength after patching.
+
+    delta_array_new: Array
+    Array of LOS delta after patching.
+    """
+
+    lambda_array_index = lambda_array.copy()
+    lambda_array_index -= lambda_array[0]
+    lambda_array_index /= delta_lambda
+    lambda_array_index += 0.5
+    lambda_array_index = np.array(lambda_array_index, dtype=int)
+    index_all = range(lambda_array_index[-1] + 1)
+    index_ok = np.in1d(index_all, lambda_array_index)
+
+    # Patching delta
+    delta_array_new = np.zeros(len(index_all))
+    delta_array_new[index_ok] = delta_array
+
+    # Patching lambda
+    lambda_array_new = np.array(index_all, dtype=float)
+    lambda_array_new *= delta_lambda
+    lambda_array_new += lambda_array[0]
+
+    return lambda_array_new, delta_array_new
+
 
 def _spectral_resolution(wdisp, fiberid, log_lambda):
     # adapted from picca/py/picca/delta_extraction/utils_pk1d.py
+    # This function has to be adapted to DESI
     reso = wdisp * SPEED_LIGHT * 1.0e-4 * np.log(10.)
 
     lambda_ = np.power(10., log_lambda)
