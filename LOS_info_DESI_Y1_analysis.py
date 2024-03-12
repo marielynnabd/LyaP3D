@@ -178,21 +178,24 @@ def get_los_info_table_desi(qso_cat, deltas_dir, lambda_min, lambda_max, z_cente
     z_center: Float or array of floats
     Value of z center per redshift bin
     PS: lambda_min, lambda_max and z_center must have the same length
-    
+
+    outputdir: string, default None
+    Write LOS table to file
+
+    outputfilename: string, default None
+    Name of the file
+
     lambda_pixelmask_min: Float or array of floats
     Minimum of wavelength intervals to be masked. This will be applied not on data, but on wavelength_ref
-    
+
     lambda_pixelmask_max: Float or array of floats
     Maximum of wavelength intervals to be masked. This will be applied not on data, but on wavelength_ref
 
     ncpu: int or 'all'
     For multiprocessing.Pool
 
-    outputdir: string, default None
-    Write LOS table to file
-    
-    outputfilename: string, default None
-    Name of the file
+    include_snr_reso: bool, default False
+    If set, includes MEANRESO and MEANSNR from the delta's headers, to the los_info_table
 
     Return:
     -------
