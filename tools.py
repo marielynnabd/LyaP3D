@@ -159,3 +159,24 @@ def fitfunc_std_fftproduct(snr, amp, zero_point):
     """
     return (amp / (snr - 1)) + zero_point
 
+
+def fitfunc_variance_pk1d(snr, amp, zero_point):
+    """Variance fit equation
+
+    Arguments
+    ---------
+    snr (float): 
+    The signal-to-noise ratio of the signal. Must be greater than 1.
+
+    amp (float): 
+    The amplitude of the signal.
+
+    zero_point (float): 
+    The zero point offset of the signal.
+
+    Return
+    ------
+    float: The std of the signal.
+    """
+    return (amp / (snr - 1)**2) + zero_point
+
