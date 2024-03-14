@@ -276,7 +276,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
     return p_cross_table
 
 
-def compute_mean_p_auto(all_los_table, data_type, units, weights_method = 'no_weights', 
+def compute_mean_p_auto(all_los_table, data_type, units, weight_method='no_weights', 
                         min_snr_p_auto=None, max_resolution_p_auto=None, resolution_correction=True, 
                         p_noise=0, with_covmat=True):
     """ This function computes mean power spectrum for angular separation = 0 (Lya forest and itself, called auto power spectrum):
@@ -477,7 +477,7 @@ def compute_mean_p_auto(all_los_table, data_type, units, weights_method = 'no_we
 
 
 def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type,
-                                units, p_noise=0, min_snr_p_cross=None, min_snr_p_auto=None,
+                                units, weight_method='no_weights', p_noise=0, min_snr_p_cross=None, min_snr_p_auto=None,
                                 max_resolution_p_cross=None, max_resolution_p_auto=None,
                                 resolution_correction=False, reshuffling=False, with_covmat=True):
     """ - This function computes mean_power_spectrum:
@@ -503,7 +503,8 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
                                          reshuffling=reshuffling,
                                          with_covmat=with_covmat,
                                          data_type=data_type, 
-                                         units=units)
+                                         units=units,
+                                         weight_method=weight_method)
 
     p_auto_table = compute_mean_p_auto(all_los_table=all_los_table, 
                                        min_snr_p_auto=min_snr_p_auto, 
@@ -512,7 +513,8 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
                                        with_covmat=with_covmat,
                                        p_noise=p_noise,
                                        data_type=data_type, 
-                                       units=units)
+                                       units=units,
+                                       weight_method=weight_method)
     mean_power_spectrum = vstack([p_auto_table, p_cross_table])
     
     return mean_power_spectrum
@@ -585,7 +587,7 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins, k_scale):
     return power_spectrum_table
 
 
-def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_scale, data_type, units,
+def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_scale, data_type, units, weight_method='no_weights',
                                     ang_sep_bin_edges=None, ang_sep_bin_centers=None,
                                     p_noise=0, min_snr_p_cross=None, min_snr_p_auto=None,
                                     max_resolution_p_cross=None, max_resolution_p_auto=None,
@@ -702,7 +704,8 @@ def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_sca
         mock_mean_power_spectrum = compute_mean_power_spectrum(all_los_table=all_los_table, 
                                                                los_pairs_table=los_pairs_table,
                                                                ang_sep_bin_edges=ang_sep_bin_edges,
-                                                               data_type=data_type, units=units, 
+                                                               data_type=data_type, units=units,
+                                                               weight_method=weight_method,
                                                                p_noise=p_noise, 
                                                                min_snr_p_cross=min_snr_p_cross, 
                                                                min_snr_p_auto=min_snr_p_auto,
