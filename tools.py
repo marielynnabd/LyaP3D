@@ -157,5 +157,5 @@ def fitfunc_std_fftproduct(snr, amp, zero_point):
     ------
     float: The std of the signal.
     """
-    return (amp / (snr - 1)**2) + zero_point
+    return (amp / (snr - 1)) + zero_point
 
