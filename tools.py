@@ -137,3 +137,25 @@ def find_bin_edges(arr, mean_values_target, debug=False, for_p_cross=True):
             print("Mean values (target/effective):", mean_values_target[i], np.mean(arr[sel]))
 
     return edges
+
+
+def fitfunc_std_fftproduct(snr, amp, zero_point):
+    """Standard deviation fit equation
+
+    Arguments
+    ---------
+    snr (float): 
+    The signal-to-noise ratio of the signal. Must be greater than 1.
+
+    amp (float): 
+    The amplitude of the signal.
+
+    zero_point (float): 
+    The zero point offset of the signal.
+
+    Return
+    ------
+    float: The std of the signal.
+    """
+    return (amp / (snr - 1)**2) + zero_point
+
