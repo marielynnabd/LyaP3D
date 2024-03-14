@@ -10,12 +10,12 @@ from astropy.table import Table, vstack
 from multiprocessing import Pool
 from astropy.cosmology import FlatLambdaCDM
 
-from tools import SPEED_LIGHT, LAMBDA_LYA, find_bin_edges, convert_units
+from tools import SPEED_LIGHT, LAMBDA_LYA, find_bin_edges, convert_units, fitfunc_std_fftproduct
 from eBOSS_dr16_analysis import boss_resolution_correction
 from pairs_computation import compute_pairs
 
 
-def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type, units,
+def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type, units, weight_method='no_weights',
                          min_snr_p_cross=None, max_resolution_p_cross=None,
                          resolution_correction=False, reshuffling=False, with_covmat=True):
     """ This function computes mean power spectrum for pairs with angular separations > 0 (called cross power spectrum):
@@ -61,6 +61,12 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
     units: String, Options: 'Mpc/h', 'Angstrom', 'km/s'.
     Units in which to compute power spectrum.
     
+    weight_method: String
+    3 possible options:
+        'no_weights': Compute mean cross power spectrum without weights (Used for mocks, or for data when min_snr_p_cross is not None).
+        'forest_snr': Compute mean cross power spectrum with weights = w_i * w_j with w_i = SNR_i, with i and j being the LOS forming each pair.
+        'fit_forest_snr': Compute mean P1D with weights = w_i * w_j with w_i and w_j estimated by fitting dispersion of (delta_i * conj(delta_i)) vs SNR.
+
     Return:
     -------
     p_cross_table: Table
@@ -95,13 +101,15 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
     delta_los = all_los_table['delta_los']
     Npix = len(delta_los[0])
     print('Npix', Npix)
-    
+
     # Applying snr mask
     if min_snr_p_cross is not None:
         print('snr cut applied')
         snr_los1 = all_los_table['MEANSNR'][ los_pairs_table['index_los1'] ]
         snr_los2 = all_los_table['MEANSNR'][ los_pairs_table['index_los2'] ]
-        snr_mask = (snr_los1 > min_snr_p_cross) & (snr_los2 > min_snr_p_cross) 
+        snr_mask = (snr_los1 > min_snr_p_cross) & (snr_los2 > min_snr_p_cross)
+        if weight_method != 'no_weights':
+            print('Warning, both snr cut and weighting will be applied')
     else:
         snr_mask = np.ones(len(los_pairs_table), dtype=bool)
 
@@ -172,9 +180,25 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
         if data_type == 'eBOSS':
             p_cross = convert_units(p_cross, 'km/s', units, z, inverse_units=False)
             k_parallel = convert_units(k_parallel, 'km/s', units, z, inverse_units=True)
-        else: # This is thr case of 'mocks' and 'DESI' where pcross is first computed in Angstrom
+        else: # This is the case of 'mocks' and 'DESI' where pcross is first computed in Angstrom
             p_cross = convert_units(p_cross, 'Angstrom', units, z, inverse_units=False)
             k_parallel = convert_units(k_parallel, 'Angstrom', units, z, inverse_units=True)
+
+        # Preparing for the weighting scheme
+        if weight_method != 'no_weights': # Either 'forest_snr' or 'fit_forest_snr'
+            # These are the snr of the LOS that fall into this bin and contribute to the measurement
+            snr_los1 = all_los_table['MEANSNR'][index_los1]
+            snr_los2 = all_los_table['MEANSNR'][index_los2]
+
+        if weight_method = 'fit_forest_snr':
+            fft_product_los1 = (fft_delta[index_los1].real**2 + fft_delta[index_los1].imag**2) * delta_lambda / Npix
+            fft_product_los2 = (fft_delta[index_los2].real**2 + fft_delta[index_los2].imag**2) * delta_lambda / Npix
+            if data_type == 'eBOSS':
+                fft_product_los1 = convert_units(fft_product_los1, 'km/s', units, z, inverse_units=False)
+                fft_product_los2 = convert_units(fft_product_los2, 'km/s', units, z, inverse_units=False)
+            else: # This is the case of 'mocks' and 'DESI' where pcross is first computed in Angstrom
+                fft_product_los1 = convert_units(fft_product_los1, 'Angstrom', units, z, inverse_units=False)
+                fft_product_los2 = convert_units(fft_product_los2, 'Angstrom', units, z, inverse_units=False)
 
         # resolution correction computation
         if resolution_correction == True:
@@ -199,8 +223,51 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
 
         for i in range(Nk):
             p_cross_array = np.array(p_cross[:,i])
-            mean_p_cross[i] = np.mean(p_cross_array.real)
-            error_p_cross[i] = np.std(p_cross_array.real) / np.sqrt(N_pairs - 1)
+
+            # Applying weighting scheme
+            if weight_method == 'fit_forest_snr':
+                # Selecting the points corresponding to the same k_parallel value 
+                fft_product_los1_array = np.array(fft_product_los1[:,i])
+                fft_product_los2_array = np.array(fft_product_los2[:,i])
+
+                # Computing the fit of the standard deviation these points
+                snr_bin_edges = np.arange(1, 10 + 1, 1)
+                snr_bins = (snr_bin_edges[:-1] + snr_bin_edges[1:]) / 2
+                standard_dev_los1, _, _ = binned_statistic(snr_los1, fft_product_los1_array, statistic="std", bins=snr_bin_edges)
+                standard_dev_los2, _, _ = binned_statistic(snr_los2, fft_product_los2_array, statistic="std", bins=snr_bin_edges)
+                coef_los1, *_ = curve_fit(fitfunc_std_fftproduct, snr_bins, standard_dev_los1**2, bounds=(0, np.inf))
+                coef_los2, *_ = curve_fit(fitfunc_std_fftproduct, snr_bins, standard_dev_los2**2, bounds=(0, np.inf))
+
+                # Fixing high and low snr values
+                snr_los1[snr_los1 > 10] = 10
+                snr_los1[snr_los1 < 1.01] = 1.01
+                snr_los2[snr_los2 > 10] = 10
+                snr_los2[snr_los2 < 1.01] = 1.01
+
+                # Estimated std
+                standard_dev_los1_estimated = fitfunc_std_fftproduct(snr_los1, *coef_los1)
+                standard_dev_los2_estimated = fitfunc_std_fftproduct(snr_los2, *coef_los2)
+
+                # Weights
+                weights_los1 = 1 / standard_dev_los1_estimated
+                weights_los2 = 1 / standard_dev_los2_estimated
+                weights_p_cross_array = weights_los1 * weights_los2
+
+                # Computing weighted average
+                mean_p_cross[i] = np.average((p_cross_array.real, weights=weights_p_cross_array)
+                error_p_cross[i] = np.sqrt(1.0 / np.sum(weights_p_cross_array))
+
+            elif weight_method == 'forest_snr':
+                weights_p_cross_array = snr_los1 * snr_los2
+
+                # Computing weighted average
+                mean_p_cross[i] = np.average((p_cross_array.real, weights=weights_p_cross_array)
+                error_p_cross[i] = np.sqrt(1.0 / np.sum(weights_p_cross_array))
+
+            else:
+                mean_p_cross[i] = np.mean(p_cross_array.real)
+                error_p_cross[i] = np.std(p_cross_array.real) / np.sqrt(N_pairs - 1)
+
             mean_resolution_correction_p_cross[i] = np.mean(resolution_correction_p_cross[:,i])
 
         p_cross_table['k_parallel'][i_ang_sep, :] = k_parallel
