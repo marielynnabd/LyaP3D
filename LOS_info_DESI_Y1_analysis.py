@@ -10,8 +10,6 @@ from astropy.table import Table, vstack
 import scipy
 
 from .tools import SPEED_LIGHT
-from .DESI_Y1_analysis import _spectral_resolution
-
 
 def get_desi_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, lambda_pixelmask_min=None, lambda_pixelmask_max=None, include_snr_reso=False):
     """ This function returns a table of ra, dec, TARGETID, MEANRESO and MEANSNR for each of the QSOs in qso_cat
@@ -59,13 +57,13 @@ def get_desi_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_ma
         lambda_pixelmask_min = np.array([lambda_pixelmask_min])
     if hasattr(lambda_pixelmask_max,'__len__') is False:
         lambda_pixelmask_max = np.array([lambda_pixelmask_max])
-    
+
     # Reference DESI wavelength grid
     wavelength_ref_min = 3600.  # AA
     wavelength_ref_max = 9824.  # AA
     delta_lambda = 0.8  # AA
     wavelength_ref = np.arange(wavelength_ref_min, wavelength_ref_max+0.01, delta_lambda) # same all the time but need to be redefined
-    
+
     # Masking pixels if masks are not none
     if (lambda_pixelmask_min is not None) & (lambda_pixelmask_max is not None):
         if (len(lambda_pixelmask_min)==len(lambda_pixelmask_max)):
@@ -83,7 +81,7 @@ def get_desi_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_ma
     n_hdu = len(delta_file)-1 # Each delta file contains many hdu (don't take into account HDU0)
     print("DESI delta file ", delta_file_name, ":", n_hdu, "HDUs")
     n_masked = 0
-    
+
     # This part is to initialize a list of tables where each table corresponds to one redshift bin
     los_info_table_list = []
     for j in range(len(z_center)):
@@ -110,10 +108,10 @@ def get_desi_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_ma
             wavelength = delta_file[i+1]['LAMBDA'][:].astype(float) 
                 
             for j in range(len(z_center)): # los_info_table_list must have n_zbins lists
-                wavelength_ref_zbin = wavelength_ref # Where wavelength_ref is one for all zbins
+                wavelength_ref_zbin = wavelength_ref.copy() # Where wavelength_ref is one for all zbins
                 mask_wavelength_ref_zbin = (wavelength_ref_zbin > lambda_min[j]) & (wavelength_ref_zbin < lambda_max[j])
                 wavelength_ref_zbin = wavelength_ref_zbin[mask_wavelength_ref_zbin]
-                
+
                 # This part is to check if the delta must be included in the redshift bin or not: 
                 # Checking if LAMBDA.min < lambda_min & LAMBDA.max > lambda_max
                 if (wavelength.min() < lambda_min[j]) and (wavelength.max() > lambda_max[j]):
@@ -124,9 +122,6 @@ def get_desi_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_ma
                     # otherwise it means that there are masked pixels and we don't want to consider this delta in the calculation
                     if len(wavelength[mask_wavelength]) == len(wavelength_ref_zbin):
                         if np.allclose(wavelength[mask_wavelength], wavelength_ref_zbin):
-                    # # Just for the pairs counting test of Stat_MaskedLOS to see if we want to keep or discard masked LOS
-                    # if 1 == 1: 
-                    #     if 1 == 1:
                             los_info_table_list[j][i]['ra'] = delta_i_header['RA'] * 180 / np.pi  # must convert rad --> dec.
                             los_info_table_list[j][i]['dec'] = delta_i_header['DEC'] * 180 / np.pi
                             los_info_table_list[j][i]['TARGETID'] = delta_ID
