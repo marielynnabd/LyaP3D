@@ -86,7 +86,7 @@ def get_desi_los_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
     los_table_list = []
     for j in range(len(z_center)):
         # Selecting the part of wavelength_ref that corresponds to the z bin
-        wavelength_ref_zbin = wavelength_ref # Where wavelength_ref is one for all zbins
+        wavelength_ref_zbin = wavelength_ref.copy() # Where wavelength_ref is one for all zbins
         mask_wavelength_ref_zbin = (wavelength_ref_zbin > lambda_min[j]) & (wavelength_ref_zbin < lambda_max[j])
         wavelength_ref_zbin = wavelength_ref_zbin[mask_wavelength_ref_zbin]
 
@@ -122,7 +122,7 @@ def get_desi_los_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
         # Looping over zbins 
         for j in range(len(z_center)): # los_info_table_list must have n_zbins lists
             # Selecting wavelength_ref corresponding to zbin
-            wavelength_ref_zbin = wavelength_ref # Where wavelength_ref is one for all zbins
+            wavelength_ref_zbin = wavelength_ref.copy() # Where wavelength_ref is one for all zbins
             mask_wavelength_ref_zbin = (wavelength_ref_zbin > lambda_min[j]) & (wavelength_ref_zbin < lambda_max[j])
             wavelength_ref_zbin = wavelength_ref_zbin[mask_wavelength_ref_zbin]
 
