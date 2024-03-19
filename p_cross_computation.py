@@ -9,6 +9,8 @@ import glob
 from astropy.table import Table, vstack
 from multiprocessing import Pool
 from astropy.cosmology import FlatLambdaCDM
+from scipy.stats import binned_statistic
+from scipy.optimize import curve_fit
 
 from tools import SPEED_LIGHT, LAMBDA_LYA, find_bin_edges, convert_units, fitfunc_std_fftproduct, fitfunc_variance_pk1d
 from eBOSS_dr16_analysis import boss_resolution_correction
@@ -233,8 +235,8 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
                 snr_bins = (snr_bin_edges[:-1] + snr_bin_edges[1:]) / 2
                 standard_dev_los1, _, _ = binned_statistic(snr_los1, fft_product_los1_array, statistic="std", bins=snr_bin_edges)
                 standard_dev_los2, _, _ = binned_statistic(snr_los2, fft_product_los2_array, statistic="std", bins=snr_bin_edges)
-                coef_los1, *_ = curve_fit(fitfunc_std_fftproduct, snr_bins, standard_dev_los1**2, bounds=(0, np.inf))
-                coef_los2, *_ = curve_fit(fitfunc_std_fftproduct, snr_bins, standard_dev_los2**2, bounds=(0, np.inf))
+                coef_los1, *_ = curve_fit(fitfunc_std_fftproduct, snr_bins, standard_dev_los1, bounds=(0, np.inf))
+                coef_los2, *_ = curve_fit(fitfunc_std_fftproduct, snr_bins, standard_dev_los2, bounds=(0, np.inf))
                 # Fixing high and low snr values
                 snr_los1[snr_los1 > 10] = 10
                 snr_los1[snr_los1 < 1.01] = 1.01
