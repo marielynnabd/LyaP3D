@@ -190,7 +190,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
             snr_los1 = all_los_table['MEANSNR'][index_los1]
             snr_los2 = all_los_table['MEANSNR'][index_los2]
 
-        if weight_method = 'fit_forest_snr':
+        if weight_method == 'fit_forest_snr':
             fft_product_los1 = (fft_delta[index_los1].real**2 + fft_delta[index_los1].imag**2) * delta_lambda / Npix
             fft_product_los2 = (fft_delta[index_los2].real**2 + fft_delta[index_los2].imag**2) * delta_lambda / Npix
             if data_type == 'eBOSS':
@@ -248,12 +248,12 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
                 weights_los2 = 1 / standard_dev_los2_estimated
                 weights_p_cross_array = weights_los1 * weights_los2
                 # Computing weighted average
-                mean_p_cross[i] = np.average((p_cross_array.real, weights=weights_p_cross_array)
+                mean_p_cross[i] = np.average(p_cross_array.real, weights=weights_p_cross_array)
                 error_p_cross[i] = np.sqrt(1.0 / np.sum(weights_p_cross_array))
             elif weight_method == 'forest_snr':
                 weights_p_cross_array = snr_los1 * snr_los2
                 # Computing weighted average
-                mean_p_cross[i] = np.average((p_cross_array.real, weights=weights_p_cross_array)
+                mean_p_cross[i] = np.average(p_cross_array.real, weights=weights_p_cross_array)
                 error_p_cross[i] = np.sqrt(1.0 / np.sum(weights_p_cross_array))
             else:
                 mean_p_cross[i] = np.mean(p_cross_array.real)
@@ -447,12 +447,12 @@ def compute_mean_p_auto(all_los_table, data_type, units, weight_method='no_weigh
             # Weights
             weights_p_auto_array = 1 / variance_los_estimated
             # Computing weighted average
-            mean_p_auto[i] = np.average((p_auto_array, weights=weights_p_auto_array)
+            mean_p_auto[i] = np.average(p_auto_array, weights=weights_p_auto_array)
             error_p_auto[i] = np.sqrt(1.0 / np.sum(weights_p_auto_array))
         elif weight_method == 'forest_snr':
             weights_p_auto_array = snr_los**2
             # Computing weighted average
-            mean_p_auto[i] = np.average((p_auto_array, weights=weights_p_auto_array)
+            mean_p_auto[i] = np.average(p_auto_array, weights=weights_p_auto_array)
             error_p_auto[i] = np.sqrt(1.0 / np.sum(weights_p_auto_array))
         else:
             mean_p_auto[i] = np.mean(p_auto_array)
