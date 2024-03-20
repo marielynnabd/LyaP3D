@@ -224,10 +224,10 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
         error_p_cross = np.zeros(Nk)
 
         for i in range(Nk):
-            p_cross_array = np.array(p_cross[:,i])
+            p_cross_array = np.array(p_cross[:,i]) # This contains the values of p_cross we want to average at one k_parallel
             # Applying weighting scheme
             if weight_method == 'fit_forest_snr':
-                # Selecting the points corresponding to the same k_parallel value 
+                # Selecting the points corresponding to the same k_parallel value from the individual fft products of the LOS 
                 fft_product_los1_array = np.array(fft_product_los1[:,i])
                 fft_product_los2_array = np.array(fft_product_los2[:,i])
                 # Computing the fit of the standard deviation these points
@@ -235,9 +235,15 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
                 snr_bins = (snr_bin_edges[:-1] + snr_bin_edges[1:]) / 2
                 standard_dev_los1, _, _ = binned_statistic(snr_los1, fft_product_los1_array, statistic="std", bins=snr_bin_edges)
                 standard_dev_los2, _, _ = binned_statistic(snr_los2, fft_product_los2_array, statistic="std", bins=snr_bin_edges)
-                coef_los1, *_ = curve_fit(fitfunc_std_fftproduct, snr_bins, standard_dev_los1, bounds=(0, np.inf))
-                coef_los2, *_ = curve_fit(fitfunc_std_fftproduct, snr_bins, standard_dev_los2, bounds=(0, np.inf))
-                # Fixing high and low snr values
+                mask_nan_in_std_los1 = ~np.isnan(standard_dev_los1)
+                mask_nan_in_std_los2 = ~np.isnan(standard_dev_los2)
+                standard_dev_los1 = standard_dev_los1[mask_nan_in_std_los1]
+                standard_dev_los2 = standard_dev_los2[mask_nan_in_std_los2]
+                snr_bins_los1 = snr_bins[mask_nan_in_std_los1]
+                snr_bins_los2 = snr_bins[mask_nan_in_std_los2]
+                coef_los1, *_ = curve_fit(fitfunc_std_fftproduct, snr_bins_los1, standard_dev_los1, bounds=(0, np.inf))
+                coef_los2, *_ = curve_fit(fitfunc_std_fftproduct, snr_bins_los2, standard_dev_los2, bounds=(0, np.inf))
+                # Fixing high and low snr values of data
                 snr_los1[snr_los1 > 10] = 10
                 snr_los1[snr_los1 < 1.01] = 1.01
                 snr_los2[snr_los2 > 10] = 10
