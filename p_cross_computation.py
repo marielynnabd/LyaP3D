@@ -68,6 +68,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
         'no_weights': Compute mean cross power spectrum without weights (Used for mocks, or for data when min_snr_p_cross is not None).
         'forest_snr': Compute mean cross power spectrum with weights = w_i * w_j with w_i = SNR_i, with i and j being the LOS forming each pair.
         'fit_forest_snr': Compute mean P1D with weights = w_i * w_j with w_i and w_j estimated by fitting dispersion of (delta_i * conj(delta_i)) vs SNR.
+                          PS: This weight_method doesn't allow forests having snr < 1, if such data is being used, must do min_snr_p_cross = 1.
 
     Return:
     -------
@@ -329,6 +330,7 @@ def compute_mean_p_auto(all_los_table, data_type, units, weight_method='no_weigh
         'no_weights': Compute mean cross power spectrum without weights (Used for mocks, or for data when min_snr_p_cross is not None).
         'forest_snr': Compute mean cross power spectrum with weights = w_i * w_j with w_i = SNR_i, with i and j being the LOS forming each pair.
         'fit_forest_snr': Compute mean P1D with weights = w_i * w_j with w_i and w_j estimated by fitting dispersion of (delta_i * conj(delta_i)) vs SNR.
+                          PS: This weight_method doesn't allow forests having snr < 1, if such data is being used, must do min_snr_p_auto = 1.
 
     Return:
     -------
