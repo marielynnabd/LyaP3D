@@ -446,6 +446,9 @@ def compute_mean_p_auto(all_los_table, data_type, units, weight_method='no_weigh
             snr_bin_edges = np.arange(1, 10 + 1, 1)
             snr_bins = (snr_bin_edges[:-1] + snr_bin_edges[1:]) / 2
             standard_dev_los, _, _ = binned_statistic(snr_los, p_auto_array, statistic="std", bins=snr_bin_edges)
+            mask_nan_in_std_los = ~np.isnan(standard_dev_los)
+            standard_dev_los = standard_dev_los[mask_nan_in_std_los]
+            snr_bins = snr_bins[mask_nan_in_std_los]
             coef_los, *_ = curve_fit(fitfunc_variance_pk1d, snr_bins, standard_dev_los**2, bounds=(0, np.inf))
             # Fixing high and low snr values
             snr_los[snr_los > 10] = 10
