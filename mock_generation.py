@@ -85,13 +85,18 @@ def generate_box(Nx, Ny, Nz, pixel_size, model='model1'):
     return grf_box
 
 
-def draw_los(grf_box, los_number, pixel_size, z_box, noise=0):
-    """ Draw LOS from a box of GRF in real space and converts their cartesian coordinates to sky coordinates (ra,dec) in degree
+def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
+    """ Draw LOS from a simulation_Transmissions/simulation_Deltas/GRF box in real space and converts their cartesian coordinates to sky coordinates (ra,dec) in degree
+    PS: this code draws LOS from the provided box without changing the type, i.e. if the box is a Deltas box, delta_los will be stored in all_los_table output,
+    and if the box is a Transmissions box, transmission_los will be stored in all_los_table output
     
     Arguments:
     ----------
-    grf_box: 3D matrix of size [Nx, Ny, Nz]
-    Box of GRF in real space
+    box: 3D matrix of size [Nx, Ny, Nz]
+    Box could be a GRF box (deltas), Transmissions of a simulation box, or Deltas of a simulation box = F/mean(F) - 1 (usually in real space)
+    
+    box_type: string
+    Type of the box, could be: 'transmissions', 'deltas' (Deltas accounts for both GRF boxes or Deltas from simulations)
     
     los_number: float
     Number of LOS we want to draw
@@ -108,13 +113,13 @@ def draw_los(grf_box, los_number, pixel_size, z_box, noise=0):
     Return:
     -------
     all_los_table: Table, one column per LOS
-    Table of GRF drawn along randomlxy chosen axes
+    Table of LOS drawn along randomly chosen axes
     """
 
     # Arrays of x, y and z coordinates
-    Nx = len(grf_box[0])
-    Ny = len(grf_box[1])
-    Nz = len(grf_box[2])
+    Nx = len(box[0])
+    Ny = len(box[1])
+    Nz = len(box[2])
     Nx_array = np.arange(0,Nx,1)
     Ny_array = np.arange(0,Ny,1)
     Nz_array = np.arange(0,Nz,1)
@@ -134,13 +139,17 @@ def draw_los(grf_box, los_number, pixel_size, z_box, noise=0):
     all_los_table['x'] = np.zeros(los_number)
     all_los_table['y'] = np.zeros(los_number)
     all_los_table['z'] = np.zeros((los_number, Nz))
-    all_los_table['delta_los'] = np.zeros((los_number, Nz))
+    
+    if box_type == 'transmissions':
+        all_los_table['transmission_los'] = np.zeros((los_number, Nz))
+    elif box_type == 'deltas':
+        all_los_table['delta_los'] = np.zeros((los_number, Nz))
     all_los_table['wavelength'] = np.zeros((los_number, Nz))
     
     # Choosing random float values of x and y, interpolating on grid and drawing LOS[x, y, :]
     
     ## Defining interpolation functions on box
-    interp_function_delta = scipy.interpolate.RegularGridInterpolator((Nx_array, Ny_array, Nz_array), grf_box)
+    interp_function_box = scipy.interpolate.RegularGridInterpolator((Nx_array, Ny_array, Nz_array), box)
 
     ## Drawing LOS and save in table
     j = 0
@@ -155,7 +164,7 @@ def draw_los(grf_box, los_number, pixel_size, z_box, noise=0):
             Y_array = np.ones(Ny)*Y
             
             point_positions = np.transpose(np.array([X_array, Y_array, Nz_array])) # Z_array = Nz_array, all the z axis is used always
-            delta_los = interp_function_delta(point_positions) 
+            los_at_point_positions = interp_function_box(point_positions) # = delta_los if deltas box and = transmission_los if transmissions box
             
             # Conversion factor from Mpc to degree
             deg_to_Mpc = cosmo.comoving_distance(z_box).value * np.pi / 180
@@ -173,8 +182,10 @@ def draw_los(grf_box, los_number, pixel_size, z_box, noise=0):
             all_los_table['x'][j] = x_coord # Mpc/h
             all_los_table['y'][j] = y_coord # Mpc/h
             all_los_table['z'][j,:] = Nz_array * pixel_size # Mpc/h
-            all_los_table['delta_los'][j,:] = delta_los
-            # all_los_table['wavelength [Angstrom]'][j,:] = (1 + z) * lambda_lya
+            if box_type == 'transmissions':
+                all_los_table['tranmission_los'][j,:] = los_at_point_positions
+            elif box_type == 'deltas':
+                all_los_table['delta_los'][j,:] = los_at_point_positions
             all_los_table['wavelength'][j,:] = (1 + z) * LAMBDA_LYA
             
             couples_list.append(couple)     
