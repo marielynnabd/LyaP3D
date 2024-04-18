@@ -183,7 +183,7 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
             all_los_table['y'][j] = y_coord # Mpc/h
             all_los_table['z'][j,:] = Nz_array * pixel_size # Mpc/h
             if box_type == 'transmissions':
-                all_los_table['tranmission_los'][j,:] = los_at_point_positions
+                all_los_table['transmission_los'][j,:] = los_at_point_positions
             elif box_type == 'deltas':
                 all_los_table['delta_los'][j,:] = los_at_point_positions
             all_los_table['wavelength'][j,:] = (1 + z) * LAMBDA_LYA
