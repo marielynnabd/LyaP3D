@@ -14,7 +14,8 @@ from tools import SPEED_LIGHT, LAMBDA_LYA
 
 def generate_box(Nx, Ny, Nz, pixel_size, model='model1'):
     """ Gerenate GRF box in real space
-    
+    PS: This function was tested and used to create grf mocks but we stopped this analysis and moved to creating mocks using Nyx simulation boxes, with the functions below
+
     Arguments:
     ----------
     Nx, Ny, Nz: Floats
@@ -87,7 +88,8 @@ def generate_box(Nx, Ny, Nz, pixel_size, model='model1'):
 
 def run_mock_generation(output_file, Nx, Ny, Nz, pixel_size, los_number, overwrite=True, model='model1'):
     """ Function that generates GRF box and then draws LOS using the generate_box and draw_los functions
-    
+    PS: This function was tested and used to create grf mocks but we stopped this analysis and moved to creating mocks using Nyx simulation boxes, with the functions below
+
     Arguments:
     ----------
     output_file: str
