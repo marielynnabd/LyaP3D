@@ -11,6 +11,9 @@ sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
 from tools import LAMBDA_LYA
 
 
+def add_missing_args_to_Nyxmock(Nyx_mock_file, )
+
+
 def adapt_Nyxmock_to_QQ_input(Nyx_mock_file, outdir, healpix_nside, healpix_nest):
     """ This function first reads a mock of LOS transmissions created from a Nyx simulation 
     using the draw_los function in mock_generation.py and adapts it to the input format accepted by Quickquasars (i.e. fits table to fits image)
@@ -59,8 +62,8 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mock_file, outdir, healpix_nside, healpix_nest
         # Preparing outfiles
         select_pix = (Nyx_mock['hpix'] == pix)
         print('Number of LOS in pixel '+str(pix)+' is:', np.sum(select_pix))
-        # fname = outdir+'/{}/{}/transmission-{}-{}.fits.gz'.format(pix//100, pix, nside, pix)
-        fname = outdir+'/transmission-{}-{}.fits.gz'.format(nside, pix)
+        # fname = outdir+'/{}/{}/transmission-{}-{}.fits.gz'.format(pix//100, pix, healpix_nside, pix)
+        fname = outdir+'/transmission-{}-{}.fits.gz'.format(healpix_nside, pix)
         print('LOS in this pixel will be stored in:', fname)
         output_fits_image = fitsio.FITS(fname, 'rw', clobber=True)
 
@@ -84,9 +87,9 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mock_file, outdir, healpix_nside, healpix_nest
 
         # HEADER
         header_for_all = [{'name':"LYA", 'value': LAMBDA_LYA, 'comment':"LYA wavelength"},
-                            {'name':"HPXNSIDE", 'value': nside, 'comment':"healpix nside parameter"}, 
+                            {'name':"HPXNSIDE", 'value': healpix_nside, 'comment':"healpix nside parameter"}, 
                             {'name':"HPXPIXEL", 'value': pix, 'comment':"healpix pixel"}, 
-                            {'name':"HPXNEST", 'value': nest, 'comment':"healpix scheme"}]
+                            {'name':"HPXNEST", 'value': healpix_nest, 'comment':"healpix scheme"}]
 
         # Write to output_fits_image
         output_fits_image.write(meta_data_table, names=meta_data_names, header=header_for_all, extname='METADATA') # METADATA HDU
