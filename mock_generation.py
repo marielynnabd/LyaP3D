@@ -1,4 +1,6 @@
-""" This module provides a set of functions in order to generate a box of GRF in real space and return a table of LOS """
+""" This module provides a set of functions in order to generate a box of GRF in real space and return a table of LOS (a mock)
+    More importantly, it is used to draw_los from Nyx_simulation_boxes
+"""
 
 import numpy as np
 import sys, os
@@ -115,7 +117,7 @@ def run_mock_generation(output_file, Nx, Ny, Nz, pixel_size, los_number, overwri
     all_los_table: Table, one column per LOS
     Table of GRF drawn along randomlxy chosen axes
     """
-    
+
     print('Generating mock with model '+str(model)+' used')
     
     if os.path.exists(output_file) and not overwrite:
@@ -129,6 +131,103 @@ def run_mock_generation(output_file, Nx, Ny, Nz, pixel_size, los_number, overwri
     all_los_table = fitsio.FITS(output_file, 'rw', clobber=True)
     all_los_table.write(los_table.as_array())
     all_los_table.close()
+
+
+def rescale_tau(tau_grid, mean_flux_goal, verbose=True):
+    """ This function rescales the tau grid to a goal value
+
+    Arguments:
+    ----------
+    tau_grid: 3D matrix of size [Nx, Ny, Nz]
+    Grid of optical depth tau
+
+    mean_flux_foal: Float
+    The desired value of mean flux after rescaling. It must be between 0 and 1
+
+    Return:
+    -------
+    tau_rescaled: 3D matrix of size [Nx, Ny, Nz]
+    Grid of rescaled optical depth
+    """
+
+    def _residuals(param, f, x, y):
+        return y - f(param, x)
+
+    def _chi2(param, f, x, y, error=None):
+        if error is None:
+            return y - f(param, x)
+        else:
+            return (y - f(param, x)) / np.sqrt(error)
+
+    def fit(f, x, y, p0, error=None):
+        if error is None:
+            args = (f, x, y)
+            # param = scipy.optimize.leastsq(_chi2, p0, args(f, x, y))
+            param = scipy.optimize.leastsq(_chi2, p0, args=args)
+            res = _residuals(param[0], f, x, y)
+        else:
+            args = (f, x, y, error)
+            # param = scipy.optimize.leastsq(_chi2, p0, args(f, x, y, error))
+            param = scipy.optimize.leastsq(_chi2, p0, args=args)
+            res = _residuals(param[0], f, x, y)
+        return param[0], res
+
+    tau_goal = -np.log(mean_flux_goal)
+    f = lambda param, x: -1.0 * np.log(np.mean(np.exp(-1.0 * param[0] * x)))
+    param, res = fit(f, tau_grid, tau_goal, [0])
+    scaling_factor = param[0]
+
+    tau_rescaled = tau_grid * scaling_factor
+
+    if verbose:
+        print('Rescale flux:')
+        print('  Original tau_array had mean flux =', np.mean(np.exp(-tau_grid)))
+        print('  Goal mean flux =', mean_flux_goal)
+        print('  Rescaled tau has mean flux = ', np.mean(np.exp(-tau_rescaled)))
+
+    return tau_rescaled
+
+
+def preprocess_simulation_tau_grid(tau_grid, out_type, tau_rescaling=False, mean_flux_goal=None):
+    """ This function: 
+            - First, takes the 3D tau grid of a hydrodynamical simulation (e.g. Nyx in our case) and rescales it to a goal value if 'rescale_tau' in args
+            - It comuptes the transmission/F = exp(-tau) (/tau_rescaled)
+            - If out_type is 'transmissions' it returns F
+            - Or if out_type is 'deltas' it returns delta = F / mean(F) - 1
+
+    Arguments:
+    ----------
+    tau_grid: 3D matrix of size [Nx, Ny, Nz]
+    Grid of optical depth tau
+    
+    out_type: String
+    The type of the output, options: 'transmissions', 'deltas'
+    
+    rescale_tau: Boolean, default: False
+    If rescale_tau, the tau grid will be rescaled
+
+    mean_flux_foal: Float, default: None
+    The desired value of mean flux after rescaling. It must be between 0 and 1
+
+    Return:
+    -------
+    tau_rescaled: 3D matrix of size [Nx, Ny, Nz]
+    Grid of rescaled optical depth
+    """
+
+    if tau_rescaling:
+        if mean_flux_goal is None:
+            raise ValueError("mean_flux_foal cannot be None when rescale_tau is True")
+        else:
+            rescaled_tau_grid = rescale_tau(tau_grid, mean_flux_goal)
+        transmissions_grid = np.exp(-1.0 * rescaled_tau_grid)
+    else:
+        transmissions_grid = np.exp(-1.0 * tau_grid)
+
+    if out_type == 'transmissions':
+        return transmissions_grid
+    elif out_type == 'deltas':
+        return (transmissions_grid / transmissions_grid.mean()) - 1
 
 
 def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
