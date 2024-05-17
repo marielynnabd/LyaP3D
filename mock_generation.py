@@ -85,6 +85,50 @@ def generate_box(Nx, Ny, Nz, pixel_size, model='model1'):
     return grf_box
 
 
+def run_mock_generation(output_file, Nx, Ny, Nz, pixel_size, los_number, overwrite=True, model='model1'):
+    """ Function that generates GRF box and then draws LOS using the generate_box and draw_los functions
+    
+    Arguments:
+    ----------
+    output_file: str
+    Outputfile name 'outputfile_name.fits.gz'
+    
+    Nx, Ny, Nz: int
+    Box size, default is 768
+    
+    pixel_size: float
+    Cell's size in [Mpc/h], default 0.1
+    
+    overwrite: bool
+    Overwrite output
+    
+    model: String - Default: 'model1'
+    Choice of the fitting model we want to use for p3d computation
+    2 possible options:
+        'model1': According to Mcdonald 2001
+        'model2':According to Arinyo-i-prats 2015
+    
+    Return:
+    -------
+    all_los_table: Table, one column per LOS
+    Table of GRF drawn along randomlxy chosen axes
+    """
+    
+    print('Generating mock with model '+str(model)+' used')
+    
+    if os.path.exists(output_file) and not overwrite:
+        raise RuntimeError('Output file already exists: ' + output_file)
+    
+    grf_box = generate_box(Nx, Ny, Nz, pixel_size, model)
+    print(grf_box)
+    los_table = draw_los(grf_box, los_number, pixel_size)
+    print(los_table['delta_los'])
+    
+    all_los_table = fitsio.FITS(output_file, 'rw', clobber=True)
+    all_los_table.write(los_table.as_array())
+    all_los_table.close()
+
+
 def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
     """ Draw LOS from a simulation_Transmissions/simulation_Deltas/GRF box in real space and converts their cartesian coordinates to sky coordinates (ra,dec) in degree
     PS: this code draws LOS from the provided box without changing the type, i.e. if the box is a Deltas box, delta_los will be stored in all_los_table output,
@@ -201,48 +245,3 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
 
     return all_los_table
 
-
-def run_mock_generation(output_file, Nx, Ny, Nz, pixel_size, los_number, overwrite=True, model='model1'):
-    """ Function that generates GRF box and then draws LOS using the above functions
-    
-    Arguments:
-    ----------
-    output_file: str
-    Outputfile name 'outputfile_name.fits.gz'
-    
-    Nx, Ny, Nz: int
-    Box size, default is 768
-    
-    pixel_size: float
-    Cell's size in [Mpc/h], default 0.1
-    
-    overwrite: bool
-    Overwrite output
-    
-    model: String - Default: 'model1'
-    Choice of the fitting model we want to use for p3d computation
-    2 possible options:
-        'model1': According to Mcdonald 2001
-        'model2':According to Arinyo-i-prats 2015
-    
-    Return:
-    -------
-    all_los_table: Table, one column per LOS
-    Table of GRF drawn along randomlxy chosen axes
-    """
-    
-    print('Generating mock with model '+str(model)+' used')
-    
-    if os.path.exists(output_file) and not overwrite:
-        raise RuntimeError('Output file already exists: ' + output_file)
-    
-    grf_box = generate_box(Nx, Ny, Nz, pixel_size, model)
-    print(grf_box)
-    los_table = draw_los(grf_box, los_number, pixel_size)
-    print(los_table['delta_los'])
-    
-    all_los_table = fitsio.FITS(output_file, 'rw', clobber=True)
-    all_los_table.write(los_table.as_array())
-    all_los_table.close()
-
-    
