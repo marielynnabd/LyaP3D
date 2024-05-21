@@ -153,29 +153,35 @@ def rescale_tau(tau_grid, mean_flux_goal, verbose=True):
     def _residuals(param, f, x, y):
         return y - f(param, x)
 
-    def _chi2(param, f, x, y, error=None):
+    def _chi2(param, f, x, y, error=None, verbose=False):
         if error is None:
-            return y - f(param, x)
+            tmp = y - f(param, x)
+            if verbose:
+                print(param, y, tmp)
+            return tmp
         else:
-            return (y - f(param, x)) / np.sqrt(error)
+            tmp = (y - f(param, x)) / np.sqrt(error)
+            if verbose:
+                print(param, y, tmp)
+            return tmp
 
     def fit(f, x, y, p0, error=None):
         if error is None:
             args = (f, x, y)
             # param = scipy.optimize.leastsq(_chi2, p0, args(f, x, y))
-            param = scipy.optimize.leastsq(_chi2, p0, args=args)
-            res = _residuals(param[0], f, x, y)
+            param, _ = scipy.optimize.leastsq(_chi2, p0, args=args)
+            res = _residuals(param, f, x, y)
         else:
             args = (f, x, y, error)
             # param = scipy.optimize.leastsq(_chi2, p0, args(f, x, y, error))
-            param = scipy.optimize.leastsq(_chi2, p0, args=args)
-            res = _residuals(param[0], f, x, y)
-        return param[0], res
+            param, _ = scipy.optimize.leastsq(_chi2, p0, args=args)
+            res = _residuals(param, f, x, y)
+        return param, res
 
     tau_goal = -np.log(mean_flux_goal)
-    f = lambda param, x: -1.0 * np.log(np.mean(np.exp(-1.0 * param[0] * x)))
-    param, res = fit(f, tau_grid, tau_goal, [0])
-    scaling_factor = param[0]
+    f = lambda param, x: -1.0 * np.log(np.mean(np.exp(-1.0 * param * x)))
+    param, _ = fit(f, tau_grid, tau_goal, 0)
+    scaling_factor = param
 
     tau_rescaled = tau_grid * scaling_factor
 
