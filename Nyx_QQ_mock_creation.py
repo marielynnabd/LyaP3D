@@ -40,9 +40,9 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, zbin_min, zbin_max):
     # Adding z_qso and qso_id
     # Nyx_mock['z_qso'] = (np.max(Nyx_mock['wavelength']) + 100) / LAMBDA_LYA - 1
     # Nyx_mock['qso_id'] = np.random.randint(1000, 3000, len(Nyx_mock))
-    random_index = np.random.randint(0, len(z_qso), len(Nyx_mock))
+    random_index = np.random.randint(0, len(allowed_z_qso), len(Nyx_mock))
     Nyx_mock['z_qso'] = allowed_z_qso[random_index]
-    Nyx_mock['tid_qso'] = tid_qso[random_index]
+    Nyx_mock['qso_id'] = tid_qso[random_index]
 
     # Adding hpix
     nside = 16
@@ -50,6 +50,9 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, zbin_min, zbin_max):
     Nyx_mock['hpix'] = hp.ang2pix(nside, Nyx_mock['ra'], Nyx_mock['dec'], nest, lonlat=True)
     
     return Nyx_mock
+
+
+# def shift_mock: TODO, shift mock to a DESI footprint pixel
 
 
 def list_of_allowed_qso(zbin_min, zbin_max):
