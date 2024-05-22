@@ -226,6 +226,7 @@ def preprocess_simulation_tau_grid(tau_grid, out_type, tau_rescaling=False, mean
             raise ValueError("mean_flux_foal cannot be None when rescale_tau is True")
         else:
             rescaled_tau_grid = rescale_tau(tau_grid, mean_flux_goal)
+            del(tau_grid)
         transmissions_grid = np.exp(-1.0 * rescaled_tau_grid)
     else:
         transmissions_grid = np.exp(-1.0 * tau_grid)
