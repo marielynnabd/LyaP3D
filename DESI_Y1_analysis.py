@@ -14,9 +14,6 @@ sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
 from tools import SPEED_LIGHT
 
 
-# def get_desi_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, 
-#                                lambda_pixelmask_min=None, lambda_pixelmask_max=None, 
-#                                include_snr_reso=False):
 def get_desi_los_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, 
                                lambda_pixelmask_min=None, lambda_pixelmask_max=None, 
                                include_snr_reso=False):
@@ -119,55 +116,55 @@ def get_desi_los_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_
                 delta_los = delta_file[i+1]['DELTA_BLIND'][:].astype(float) 
             wavelength = delta_file[i+1]['LAMBDA'][:].astype(float)
 
-        # Looping over zbins 
-        for j in range(len(z_center)): # los_info_table_list must have n_zbins lists
-            # Selecting wavelength_ref corresponding to zbin
-            wavelength_ref_zbin = wavelength_ref.copy() # Where wavelength_ref is one for all zbins
-            mask_wavelength_ref_zbin = (wavelength_ref_zbin > lambda_min[j]) & (wavelength_ref_zbin < lambda_max[j])
-            wavelength_ref_zbin = wavelength_ref_zbin[mask_wavelength_ref_zbin]
+            # Looping over zbins 
+            for j in range(len(z_center)): # los_info_table_list must have n_zbins lists
+                # Selecting wavelength_ref corresponding to zbin
+                wavelength_ref_zbin = wavelength_ref.copy() # Where wavelength_ref is one for all zbins
+                mask_wavelength_ref_zbin = (wavelength_ref_zbin > lambda_min[j]) & (wavelength_ref_zbin < lambda_max[j])
+                wavelength_ref_zbin = wavelength_ref_zbin[mask_wavelength_ref_zbin]
 
-            # Masking pixels in wavelength_ref_zbin if masks are not none
-            if (lambda_pixelmask_min is not None) & (lambda_pixelmask_max is not None):
-                if (len(lambda_pixelmask_min)==len(lambda_pixelmask_max)):
-                    for i_pixelmask in range(len(lambda_pixelmask_min)): # or lambda_pixelmask_max, it's the same
-                        pixels_to_mask = (wavelength_ref_zbin > lambda_pixelmask_min[i_pixelmask]) & (wavelength_ref_zbin < lambda_pixelmask_max[i_pixelmask])
-                        wavelength_ref_zbin = wavelength_ref_zbin[~pixels_to_mask]
-                else:
-                    print('lambda_pixelmask_min and lambda_pixelmask_max have different lengths, therefore the mask is not taken into acccount')
-            
-            # This part is to check if the delta must be included in the redshift bin or not:
-            # Checking if LAMBDA.min < lambda_min & LAMBDA.max > lambda_max
-            if (wavelength.min() < lambda_min[j]) and (wavelength.max() > lambda_max[j]):
-                # Define wavelength mask
-                mask_wavelength = (wavelength > lambda_min[j]) & (wavelength < lambda_max[j])
-
-                # Checking that the masked wavelength and wavelength_ref have the same shape
-                # otherwise it means that there are masked pixels and we don't want to consider this delta in the calculation
-                if len(wavelength[mask_wavelength]) == len(wavelength_ref_zbin):
-                    if np.allclose(wavelength[mask_wavelength], wavelength_ref_zbin):
-                        los_table_list[j][i]['ra'] = delta_i_header['RA'] * 180 / np.pi  # must convert rad --> dec.
-                        los_table_list[j][i]['dec'] = delta_i_header['DEC'] * 180 / np.pi
-                        los_table_list[j][i]['TARGETID'] = delta_ID
-
-                        # Here we must patch wavelength and delta_los before adding to the table
-                        wavelength_patched, delta_los_patched = patch_deltas(wavelength[mask_wavelength], delta_los[mask_wavelength], delta_lambda)
-
-                        # Adding patched arrays to table
-                        los_table_list[j][i]['delta_los'] = delta_los_patched
-                        los_table_list[j][i]['wavelength'] = wavelength_patched
-
-                        # Adding MEANSNR and MEANRESO of LOS to los_table
-                        if include_snr_reso:
-                            if ('MEANSNR' in delta_i_header) and ('MEANRESO' in delta_i_header):
-                                los_table_list[j][i]['MEANSNR'] = delta_i_header['MEANSNR']
-                                los_table_list[j][i]['MEANRESO'] = delta_i_header['MEANRESO']
-                            else:
-                                print('Warning, no MEANSNR/MEANRESO in delta header.')
+                # Masking pixels in wavelength_ref_zbin if masks are not none
+                if (lambda_pixelmask_min is not None) & (lambda_pixelmask_max is not None):
+                    if (len(lambda_pixelmask_min)==len(lambda_pixelmask_max)):
+                        for i_pixelmask in range(len(lambda_pixelmask_min)): # or lambda_pixelmask_max, it's the same
+                            pixels_to_mask = (wavelength_ref_zbin > lambda_pixelmask_min[i_pixelmask]) & (wavelength_ref_zbin < lambda_pixelmask_max[i_pixelmask])
+                            wavelength_ref_zbin = wavelength_ref_zbin[~pixels_to_mask]
                     else:
-                        print('Warning')  # should not happen in principle
-                else:
-                    # print('Masked LOS')
-                    n_masked += 1
+                        print('lambda_pixelmask_min and lambda_pixelmask_max have different lengths, therefore the mask is not taken into acccount')
+
+                # This part is to check if the delta must be included in the redshift bin or not:
+                # Checking if LAMBDA.min < lambda_min & LAMBDA.max > lambda_max
+                if (wavelength.min() < lambda_min[j]) and (wavelength.max() > lambda_max[j]):
+                    # Define wavelength mask
+                    mask_wavelength = (wavelength > lambda_min[j]) & (wavelength < lambda_max[j])
+
+                    # Checking that the masked wavelength and wavelength_ref have the same shape
+                    # otherwise it means that there are masked pixels and we don't want to consider this delta in the calculation
+                    if len(wavelength[mask_wavelength]) == len(wavelength_ref_zbin):
+                        if np.allclose(wavelength[mask_wavelength], wavelength_ref_zbin):
+                            los_table_list[j][i]['ra'] = delta_i_header['RA'] * 180 / np.pi  # must convert rad --> dec.
+                            los_table_list[j][i]['dec'] = delta_i_header['DEC'] * 180 / np.pi
+                            los_table_list[j][i]['TARGETID'] = delta_ID
+
+                            # Here we must patch wavelength and delta_los before adding to the table
+                            wavelength_patched, delta_los_patched = patch_deltas(wavelength[mask_wavelength], delta_los[mask_wavelength], delta_lambda)
+
+                            # Adding patched arrays to table
+                            los_table_list[j][i]['delta_los'] = delta_los_patched
+                            los_table_list[j][i]['wavelength'] = wavelength_patched
+
+                            # Adding MEANSNR and MEANRESO of LOS to los_table
+                            if include_snr_reso:
+                                if ('MEANSNR' in delta_i_header) and ('MEANRESO' in delta_i_header):
+                                    los_table_list[j][i]['MEANSNR'] = delta_i_header['MEANSNR']
+                                    los_table_list[j][i]['MEANRESO'] = delta_i_header['MEANRESO']
+                                else:
+                                    print('Warning, no MEANSNR/MEANRESO in delta header.')
+                        else:
+                            print('Warning')  # should not happen in principle
+                    else:
+                        # print('Masked LOS')
+                        n_masked += 1
 
     # Closing delta_file
     delta_file.close()
