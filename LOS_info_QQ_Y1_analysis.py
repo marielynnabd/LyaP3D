@@ -166,7 +166,8 @@ def get_QQ_Y1_los_info_singlefile(delta_file_name, qso_cat, lambda_min, lambda_m
     return los_info_table_list
 
 
-def get_los_info_table_QQ_Y1(qso_cat, deltas_dir, lambda_min, lambda_max, z_center, outputdir, outputfilename, ncpu='all', include_snr_reso=False):
+def get_los_info_table_QQ_Y1(qso_cat, deltas_dir, lambda_min, lambda_max, z_center, outputdir, outputfilename, 
+                             lambda_pixelmask_min=None, lambda_pixelmask_max=None, ncpu='all', include_snr_reso=False):
     """ This function returns a table of ra, dec, TARGETID, MEANRESO, MEANSNR, for each of the QSOs in qso_cat.
     Wavelenghts are selected in [lambda_min, lambda_max]
     Wrapper around get_los_info_singlefile
@@ -197,6 +198,12 @@ def get_los_info_table_QQ_Y1(qso_cat, deltas_dir, lambda_min, lambda_max, z_cent
     
     outputfilename: string, default None
     Name of the file
+    
+    lambda_pixelmask_min: Float or array of floats
+    Minimum of wavelength intervals to be masked. This will be applied not on data, but on wavelength_ref
+
+    lambda_pixelmask_max: Float or array of floats
+    Maximum of wavelength intervals to be masked. This will be applied not on data, but on wavelength_ref
 
     Return:
     -------
@@ -218,7 +225,7 @@ def get_los_info_table_QQ_Y1(qso_cat, deltas_dir, lambda_min, lambda_max, z_cent
     with Pool(ncpu) as pool:
         output_get_QQ_Y1_los_info_singlefile = pool.starmap(
             get_QQ_Y1_los_info_singlefile,
-            [[f, qso_cat, lambda_min, lambda_max, z_center, include_snr_reso] for f in deltafiles]
+            [[f, qso_cat, lambda_min, lambda_max, z_center, lambda_pixelmask_min, lambda_pixelmask_max, include_snr_reso] for f in deltafiles]
         )
 
     for x in output_get_QQ_Y1_los_info_singlefile:
