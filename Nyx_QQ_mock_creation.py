@@ -40,7 +40,8 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, zbin_min, zbin_max):
     # Adding z_qso and qso_id
     # Nyx_mock['z_qso'] = (np.max(Nyx_mock['wavelength']) + 100) / LAMBDA_LYA - 1
     # Nyx_mock['qso_id'] = np.random.randint(1000, 3000, len(Nyx_mock))
-    random_index = np.random.randint(0, len(allowed_z_qso), len(Nyx_mock))
+    # random_index = np.random.randint(0, len(allowed_z_qso), len(Nyx_mock))
+    random_index = np.random.choice(len(allowed_z_qso), size=len(Nyx_mock), replace=False)
     Nyx_mock['z_qso'] = allowed_z_qso[random_index]
     Nyx_mock['qso_id'] = tid_qso[random_index]
 
