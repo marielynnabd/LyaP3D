@@ -160,7 +160,7 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mock, outdir, healpix_nside, healpix_nest):
         Z = np.array(mock_in_pix['z_qso'])
         Z_noRSD = np.array(mock_in_pix['z_qso'])
         MOCKID = np.array(mock_in_pix['qso_id'])
-        meta_data_table = [np.float32(RA), np.float32(DEC), np.float32(Z), np.float32(Z_noRSD), MOCKID]
+        meta_data_table = [np.float64(RA), np.float64(DEC), np.float64(Z), np.float64(Z_noRSD), MOCKID]
         meta_data_names = ['RA', 'DEC', 'Z', 'Z_noRSD', 'MOCKID']
 
         # WAVELENGTH from mock
