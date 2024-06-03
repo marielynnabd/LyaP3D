@@ -291,10 +291,11 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
     all_los_table['x'] = np.zeros(los_number)
     all_los_table['y'] = np.zeros(los_number)
     all_los_table['z'] = np.zeros((los_number, Nz))
-    
-    if box_type == 'transmissions':
+
+    if box_type == 'transmissions': # In this case we would like to save both transmission_los and delta_los
         all_los_table['transmission_los'] = np.zeros((los_number, Nz))
-    elif box_type == 'deltas':
+        all_los_table['delta_los'] = np.zeros((los_number, Nz))
+    elif box_type == 'deltas': # In this case the output wil only be delta_los since from a deltas box we can't go back to compute transmission_los
         all_los_table['delta_los'] = np.zeros((los_number, Nz))
     all_los_table['wavelength'] = np.zeros((los_number, Nz))
     
@@ -302,6 +303,10 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
     
     ## Defining interpolation functions on box
     interp_function_box = scipy.interpolate.RegularGridInterpolator((Nx_array, Ny_array, Nz_array), box)
+    if box_type == 'transmissions':
+        mean_box_flux = box.mean()
+        delta_box = (box / mean_box_flux) - 1
+        interp_function_delta_box = scipy.interpolate.RegularGridInterpolator((Nx_array, Ny_array, Nz_array), delta_box)
 
     ## Drawing LOS and save in table
     j = 0
@@ -317,6 +322,8 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
             
             point_positions = np.transpose(np.array([X_array, Y_array, Nz_array])) # Z_array = Nz_array, all the z axis is used always
             los_at_point_positions = interp_function_box(point_positions) # = delta_los if deltas box and = transmission_los if transmissions box
+            if box_type == 'transmissions':
+                delta_los_at_point_positions = interp_function_delta_box(point_positions)
             
             # Conversion factor from Mpc to degree
             deg_to_Mpc = cosmo.comoving_distance(z_box).value * np.pi / 180
@@ -336,6 +343,7 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
             all_los_table['z'][j,:] = Nz_array * pixel_size # Mpc/h
             if box_type == 'transmissions':
                 all_los_table['transmission_los'][j,:] = los_at_point_positions
+                all_los_table['delta_los'][j,:] = delta_los_at_point_positions
             elif box_type == 'deltas':
                 all_los_table['delta_los'][j,:] = los_at_point_positions
             all_los_table['wavelength'][j,:] = (1 + z) * LAMBDA_LYA
