@@ -27,11 +27,11 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file):
     """
     
     Nyx_mock = Table.read(Nyx_mock_file)
-    lambda_min_box = np.min(Nyx_mock['wavelength'][0])
-    lambda_max_box = np.max(Nyx_mock['wavelength'][0])
+    lambda_min_mock = np.min(Nyx_mock['wavelength'][0])
+    lambda_max_mock = np.max(Nyx_mock['wavelength'][0])
     
     # Computing allowed z_qso
-    allowed_z_qso, tid_qso = list_of_allowed_qso(lambda_min_box, lambda_max_box)
+    allowed_z_qso, tid_qso = list_of_allowed_qso(lambda_min_mock, lambda_max_mock)
     
     # Adding z_qso and qso_id
     random_index = np.random.choice(len(allowed_z_qso), size=len(Nyx_mock), replace=False)
