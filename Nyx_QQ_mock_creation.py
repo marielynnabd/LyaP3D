@@ -11,7 +11,7 @@ sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
 from tools import LAMBDA_LYA
 
 
-def add_missing_args_to_Nyxmock(Nyx_mock_file, zbin_min, zbin_max):
+def add_missing_args_to_Nyxmock(Nyx_mock_file):
     """ This function adds the missing arguments 'z_qso', 'qso_id', 'hpix' to Nyxmock, so that it contains the arguments required for QQ
     It is the adapted using the following function
     
@@ -20,12 +20,6 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, zbin_min, zbin_max):
     Nyx_mock_file: String
     The mock file containing a fits table with only 1 HDU, where each row corresponds to a QSO, obtained using draw_los in mock_generation (transmissions)
 
-    zbin_min: Float
-    Minimum redshift of bin
-    
-    zbin_max: Float
-    Maximum redshift of bin
-
     Return:
     -------
     Nyx_mock: Fits table
@@ -33,14 +27,13 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, zbin_min, zbin_max):
     """
     
     Nyx_mock = Table.read(Nyx_mock_file)
+    lambda_min_box = np.min(Nyx_mock['wavelength'][0])
+    lambda_max_box = np.max(Nyx_mock['wavelength'][0])
     
     # Computing allowed z_qso
-    allowed_z_qso, tid_qso = list_of_allowed_qso(zbin_min, zbin_max)
+    allowed_z_qso, tid_qso = list_of_allowed_qso(lambda_min_box, lambda_max_box)
     
     # Adding z_qso and qso_id
-    # Nyx_mock['z_qso'] = (np.max(Nyx_mock['wavelength']) + 100) / LAMBDA_LYA - 1
-    # Nyx_mock['qso_id'] = np.random.randint(1000, 3000, len(Nyx_mock))
-    # random_index = np.random.randint(0, len(allowed_z_qso), len(Nyx_mock))
     random_index = np.random.choice(len(allowed_z_qso), size=len(Nyx_mock), replace=False)
     Nyx_mock['z_qso'] = allowed_z_qso[random_index]
     Nyx_mock['qso_id'] = tid_qso[random_index]
@@ -53,20 +46,17 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, zbin_min, zbin_max):
     return Nyx_mock
 
 
-# def shift_mock: TODO, shift mock to a DESI footprint pixel
-
-
-def list_of_allowed_qso(zbin_min, zbin_max):
-    """ This function returns the list of allowed z_qso from QSO cat of DESI IRON in a way that their forest covers the forest range chosen by zbin_min and zbin_max.
+def list_of_allowed_qso(lambda_min, lambda_max):
+    """ This function returns the list of allowed z_qso from QSO cat of DESI IRON in a way that their forest covers the forest range of my Nyx box.
     This list will be different as we change the bins
 
     Arguments:
     ----------
-    zbin_min: Float
-    Minimum redshift of bin
+    lambda_min: Float
+    Minimum wavelength of the forest in Nyx box
     
-    zbin_max: Float
-    Maximum redshift of bin
+    lambda_max: Float
+    Maximum wavelength of the forest in Nyx box
 
     Return:
     -------
@@ -79,17 +69,13 @@ def list_of_allowed_qso(zbin_min, zbin_max):
     
     # Loading DESI IRON QSO catalog
     qso_cat = Table.read('/global/homes/m/mabdulka/P3D/DESI_IRON_analysis/catalog_iron_v0_qso_target_nobal_BI.fits.gz')
-    
-    # Min and max wavelengths of chosen bin
-    lambdabin_min = (1 + zbin_min) * LAMBDA_LYA
-    lambdabin_max = (1 + zbin_max) * LAMBDA_LYA
-    
+
     # Selecting allowed QSOs in this redshift bin
     lambda_lyaforest_min = 1060 # Value in rest frame
     lambda_lyaforest_max = 1200 # Value in rest frame
     qso_lambda_lyaforest_min = (1 + qso_cat['Z']) * lambda_lyaforest_min # Observed wavelengths
     qso_lambda_lyaforest_max = (1 + qso_cat['Z']) * lambda_lyaforest_max # Observed wavelengths
-    select_qso = (qso_lambda_lyaforest_min < lambdabin_min) & (qso_lambda_lyaforest_max > lambdabin_max)
+    select_qso = (qso_lambda_lyaforest_min < lambda_min) & (qso_lambda_lyaforest_max > lambda_max)
     
     # Allowed z_qso and corresponding tid
     z_qso_list = np.array(qso_cat['Z'][select_qso])
