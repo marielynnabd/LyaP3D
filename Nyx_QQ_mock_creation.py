@@ -5,7 +5,6 @@ import healpy as hp
 from astropy.io import fits
 from astropy.table import Table
 import fitsio
-import fitsio
 import sys, os
 sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
 from tools import LAMBDA_LYA
@@ -80,7 +79,7 @@ def list_of_allowed_qso(lambda_min, lambda_max):
     # Allowed z_qso and corresponding tid
     z_qso_list = np.array(qso_cat['Z'][select_qso])
     qso_tid_list = np.array(qso_cat['TARGETID'][select_qso])
-    
+
     return z_qso_list, qso_tid_list
 
 
