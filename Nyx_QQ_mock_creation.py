@@ -9,8 +9,10 @@ import sys, os
 sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
 from tools import LAMBDA_LYA
 
+from astropy.cosmology import FlatLambdaCDM
 
-def add_missing_args_to_Nyxmock(Nyx_mock_file):
+
+def add_missing_args_to_Nyxmock(Nyx_mock_file, recompute_radec=True):
     """ This function adds the missing arguments 'z_qso', 'qso_id', 'hpix' to Nyxmock, so that it contains the arguments required for QQ
     It is the adapted using the following function
     
@@ -18,6 +20,9 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file):
     ----------
     Nyx_mock_file: String
     The mock file containing a fits table with only 1 HDU, where each row corresponds to a QSO, obtained using draw_los in mock_generation (transmissions)
+
+    recompute_radec: Bool, default: True
+    If True, ra dec coordinates will be recomputed using the assigned z_qso
 
     Return:
     -------
@@ -37,11 +42,24 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file):
     Nyx_mock['z_qso'] = allowed_z_qso[random_index]
     Nyx_mock['qso_id'] = tid_qso[random_index]
 
+    # Recomputing ra dec using the z_qso
+    # Computing cosmo
+    Omega_m = 0.3153
+    h = 0.7
+    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
+    deg_to_Mpc = cosmo.comoving_distance(Nyx_mock['z_qso']).value * np.pi / 180
+    Nyx_mock['new_ra'] = Nyx_mock['x'] / (deg_to_Mpc * h)
+    Nyx_mock['new_dec'] = Nyx_mock['y'] / (deg_to_Mpc * h)
+
     # Adding hpix
     nside = 16
     nest = True
-    Nyx_mock['hpix'] = hp.ang2pix(nside, Nyx_mock['ra'], Nyx_mock['dec'], nest, lonlat=True)
-    
+    # Nyx_mock['hpix'] = hp.ang2pix(nside, Nyx_mock['ra'], Nyx_mock['dec'], nest, lonlat=True)
+    try:
+        Nyx_mock['hpix'] = hp.ang2pix(nside, Nyx_mock['new_ra'], Nyx_mock['new_dec'], nest, lonlat=True)
+    except:
+        Nyx_mock['hpix'] = hp.ang2pix(nside, Nyx_mock['ra'], Nyx_mock['dec'], nest, lonlat=True)
+
     return Nyx_mock
 
 
@@ -140,8 +158,12 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mock, outdir, healpix_nside, healpix_nest):
         mock_in_pix = Nyx_mock[select_pix]
 
         # METADATA from mock
-        RA = np.array(mock_in_pix['ra'])
-        DEC = np.array(mock_in_pix['dec'])
+        try:
+            RA = np.array(mock_in_pix['new_ra'])
+            DEC = np.array(mock_in_pix['new_dec'])
+        except:
+            RA = np.array(mock_in_pix['ra'])
+            DEC = np.array(mock_in_pix['dec'])
         Z = np.array(mock_in_pix['z_qso'])
         Z_noRSD = np.array(mock_in_pix['z_qso'])
         MOCKID = np.array(mock_in_pix['qso_id'])
