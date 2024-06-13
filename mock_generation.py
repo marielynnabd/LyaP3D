@@ -237,7 +237,7 @@ def preprocess_simulation_tau_grid(tau_grid, out_type, tau_rescaling=False, mean
         return (transmissions_grid / transmissions_grid.mean()) - 1
 
 
-def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
+def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False, n_replic=1):
     """ Draw LOS from a simulation_Transmissions/simulation_Deltas/GRF box in real space and converts their cartesian coordinates to sky coordinates (ra,dec) in degree
     PS: this code draws LOS from the provided box without changing the type, i.e. if the box is a Deltas box, delta_los will be stored in all_los_table output,
     and if the box is a Transmissions box, transmission_los will be stored in all_los_table output
@@ -262,6 +262,12 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
     noise: float
     Add white gaussian fluctuations to the deltas: noise = sigma(delta_los) per Angstrom
 
+    for_qq: boolean
+    If for qq the box will have a non linear redshift and wavelength distribution
+
+    n_replic: float, default: 1
+    Number of replications of box we want in order to extend our LOS
+
     Return:
     -------
     all_los_table: Table, one column per LOS
@@ -272,9 +278,12 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
     Nx = len(box[0])
     Ny = len(box[1])
     Nz = len(box[2])
-    Nx_array = np.arange(0,Nx,1)
-    Ny_array = np.arange(0,Ny,1)
-    Nz_array = np.arange(0,Nz,1)
+    Nx_array = np.arange(0, Nx, 1)
+    Ny_array = np.arange(0, Ny, 1)
+    Nz_array = np.arange(0, Nz, 1)
+
+    if n_replic != 1:
+        Nz_array_for_replic = np.arange(0, n_replic * Nz, 1)
 
     ## TODO: cosmo pars should be args
     # Computing cosmo used for cartesian to sky coordinates conversion
@@ -287,18 +296,30 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
     all_los_table = Table()
     all_los_table['ra'] = np.zeros(los_number)
     all_los_table['dec'] = np.zeros(los_number)
-    all_los_table['redshift'] = np.zeros((los_number, Nz))
+    all_los_table['redshift'] = np.zeros((los_number, n_replic * Nz))
     all_los_table['x'] = np.zeros(los_number)
     all_los_table['y'] = np.zeros(los_number)
-    all_los_table['z'] = np.zeros((los_number, Nz))
+    all_los_table['z'] = np.zeros((los_number, n_replic * Nz))
 
     if box_type == 'transmissions': # In this case we would like to save both transmission_los and delta_los
-        all_los_table['transmission_los'] = np.zeros((los_number, Nz))
-        all_los_table['delta_los'] = np.zeros((los_number, Nz))
+        all_los_table['transmission_los'] = np.zeros((los_number, n_replic * Nz))
+        all_los_table['delta_los'] = np.zeros((los_number, n_replic * Nz))
     elif box_type == 'deltas': # In this case the output wil only be delta_los since from a deltas box we can't go back to compute transmission_los
-        all_los_table['delta_los'] = np.zeros((los_number, Nz))
-    all_los_table['wavelength'] = np.zeros((los_number, Nz))
-    
+        all_los_table['delta_los'] = np.zeros((los_number, n_replic * Nz))
+    all_los_table['wavelength'] = np.zeros((los_number, n_replic * Nz))
+
+    # Defining redshift array
+    if for_qq: # Here redshift array will be defined non-linearly (equivalently for wavelength)
+        z = np.zeros((n_replic * Nz))
+        z[0] = z_box
+        for i in range(1, len(z)):
+            z[i] = z[i-1] + (cosmo.H(z[i-1]).value * (pixel_size / h) / (SPEED_LIGHT))
+    else: # Here redshift will be linear (equivalently for wavelength)
+        if n_replic != 1: # but if we want to replicate must take an extended Nz_array being the Nz_array_for_replic
+            z = z_box + (cosmo.H(z_box).value * (Nz_array_for_replic * pixel_size / h) / (SPEED_LIGHT)) # there must be a  / factor 0.7
+        else: # This is the usual case with no replic and not for qq case
+            z = z_box + (cosmo.H(z_box).value * (Nz_array * pixel_size / h) / (SPEED_LIGHT)) # there must be a  / factor 0.7
+
     # Choosing random float values of x and y, interpolating on grid and drawing LOS[x, y, :]
     
     ## Defining interpolation functions on box
@@ -311,7 +332,6 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
     ## Drawing LOS and save in table
     j = 0
     while j<los_number:
-        # table_test = Table()
         X = np.random.uniform(1, Nx-1)
         Y = np.random.uniform(1, Ny-1)
         couple = (X, Y)
@@ -322,8 +342,12 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
             
             point_positions = np.transpose(np.array([X_array, Y_array, Nz_array])) # Z_array = Nz_array, all the z axis is used always
             los_at_point_positions = interp_function_box(point_positions) # = delta_los if deltas box and = transmission_los if transmissions box
+            if n_replic != 1:
+                los_at_point_positions = np.tile(los_at_point_positions, n_replic)
             if box_type == 'transmissions':
                 delta_los_at_point_positions = interp_function_delta_box(point_positions)
+                if n_replic != 1:
+                    delta_los_at_point_positions = np.tile(delta_los_at_point_positions, n_replic)
             
             # Conversion factor from Mpc to degree
             deg_to_Mpc = cosmo.comoving_distance(z_box).value * np.pi / 180
@@ -331,16 +355,20 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0):
             x_coord = X * pixel_size
             y_coord = Y * pixel_size
             
-            ra = (X * pixel_size) / (deg_to_Mpc * h)
-            dec = (Y * pixel_size) / (deg_to_Mpc * h)
-            z = z_box + (cosmo.H(z_box).value * (Nz_array * pixel_size / h) / (SPEED_LIGHT)) # there must be a  / factor 0.7
-            
+            ra = (x_coord) / (deg_to_Mpc * h)
+            dec = (y_coord) / (deg_to_Mpc * h)
+
             all_los_table['ra'][j] = ra # degree
             all_los_table['dec'][j] = dec # degree
             all_los_table['redshift'][j,:] = z # redshift
             all_los_table['x'][j] = x_coord # Mpc/h
             all_los_table['y'][j] = y_coord # Mpc/h
-            all_los_table['z'][j,:] = Nz_array * pixel_size # Mpc/h
+
+            if n_replic != 1:
+                all_los_table['z'][j,:] = Nz_array_for_replic * pixel_size # Mpc/h
+            else:
+                all_los_table['z'][j,:] = Nz_array * pixel_size # Mpc/h
+
             if box_type == 'transmissions':
                 all_los_table['transmission_los'][j,:] = los_at_point_positions
                 all_los_table['delta_los'][j,:] = delta_los_at_point_positions
