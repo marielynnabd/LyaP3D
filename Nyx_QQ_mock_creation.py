@@ -43,18 +43,18 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, recompute_radec=True):
     Nyx_mock['qso_id'] = tid_qso[random_index]
 
     # Recomputing ra dec using the z_qso
-    # Computing cosmo
-    Omega_m = 0.3153
-    h = 0.7
-    cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
-    deg_to_Mpc = cosmo.comoving_distance(Nyx_mock['z_qso']).value * np.pi / 180
-    Nyx_mock['new_ra'] = Nyx_mock['x'] / (deg_to_Mpc * h)
-    Nyx_mock['new_dec'] = Nyx_mock['y'] / (deg_to_Mpc * h)
+    if recompute_radec:
+        # Computing cosmo
+        Omega_m = 0.3153
+        h = 0.7
+        cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
+        deg_to_Mpc = cosmo.comoving_distance(Nyx_mock['z_qso']).value * np.pi / 180
+        Nyx_mock['new_ra'] = Nyx_mock['x'] / (deg_to_Mpc * h)
+        Nyx_mock['new_dec'] = Nyx_mock['y'] / (deg_to_Mpc * h)
 
     # Adding hpix
     nside = 16
     nest = True
-    # Nyx_mock['hpix'] = hp.ang2pix(nside, Nyx_mock['ra'], Nyx_mock['dec'], nest, lonlat=True)
     try:
         Nyx_mock['hpix'] = hp.ang2pix(nside, Nyx_mock['new_ra'], Nyx_mock['new_dec'], nest, lonlat=True)
     except:
