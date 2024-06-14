@@ -12,7 +12,7 @@ from tools import LAMBDA_LYA
 from astropy.cosmology import FlatLambdaCDM
 
 
-def add_missing_args_to_Nyxmock(Nyx_mock_file, recompute_radec=True):
+def add_missing_args_to_Nyxmock(Nyx_mock_file, replicated_box=False, recompute_radec=False):
     """ This function adds the missing arguments 'z_qso', 'qso_id', 'hpix' to Nyxmock, so that it contains the arguments required for QQ
     It is the adapted using the following function
     
@@ -21,7 +21,9 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, recompute_radec=True):
     Nyx_mock_file: String
     The mock file containing a fits table with only 1 HDU, where each row corresponds to a QSO, obtained using draw_los in mock_generation (transmissions)
 
-    recompute_radec: Bool, default: True
+    replicated_box: Same description as in lits_of_allowed_qso function
+
+    recompute_radec: Bool, default: False
     If True, ra dec coordinates will be recomputed using the assigned z_qso
 
     Return:
@@ -35,9 +37,10 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, recompute_radec=True):
     lambda_max_mock = np.max(Nyx_mock['wavelength'][0])
     
     # Computing allowed z_qso
-    allowed_z_qso, tid_qso = list_of_allowed_qso(lambda_min_mock, lambda_max_mock)
+    allowed_z_qso, tid_qso = list_of_allowed_qso(lambda_min_mock, lambda_max_mock, replicated_box)
     
     # Adding z_qso and qso_id
+    # TODO: For later, we might want to choose a certain probability of z_qso
     random_index = np.random.choice(len(allowed_z_qso), size=len(Nyx_mock), replace=False)
     Nyx_mock['z_qso'] = allowed_z_qso[random_index]
     Nyx_mock['qso_id'] = tid_qso[random_index]
@@ -63,8 +66,11 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, recompute_radec=True):
     return Nyx_mock
 
 
-def list_of_allowed_qso(lambda_min, lambda_max):
-    """ This function returns the list of allowed z_qso from QSO cat of DESI IRON in a way that their forest covers the forest range of my Nyx box.
+def list_of_allowed_qso(lambda_min, lambda_max, replicated_box=False):
+    """ This function returns the list of allowed z_qso from QSO cat of DESI IRON
+    - in a way that their forest covers the forest range of my Nyx box if the LOS is not obtained with a replicated box
+    - or just such that they are inside the range of my LOS if replicated_box
+
     This list will be different as we change the bins
 
     Arguments:
@@ -74,6 +80,9 @@ def list_of_allowed_qso(lambda_min, lambda_max):
     
     lambda_max: Float
     Maximum wavelength of the forest in Nyx box
+
+    replicated_box: Boolean, default: False
+    If replicated box, all qso inside box will be selected
 
     Return:
     -------
@@ -87,12 +96,18 @@ def list_of_allowed_qso(lambda_min, lambda_max):
     # Loading DESI IRON QSO catalog
     qso_cat = Table.read('/global/homes/m/mabdulka/P3D/DESI_IRON_analysis/catalog_iron_v0_qso_target_nobal_BI.fits.gz')
 
-    # Selecting allowed QSOs in this redshift bin
-    lambda_lyaforest_min = 1060 # Value in rest frame
-    lambda_lyaforest_max = 1200 # Value in rest frame
-    qso_lambda_lyaforest_min = (1 + qso_cat['Z']) * lambda_lyaforest_min # Observed wavelengths
-    qso_lambda_lyaforest_max = (1 + qso_cat['Z']) * lambda_lyaforest_max # Observed wavelengths
-    select_qso = (qso_lambda_lyaforest_min < lambda_min) & (qso_lambda_lyaforest_max > lambda_max)
+    if replicated_box: # Selecting allowed QSOs with their Lya emission inside replicated box range
+        qso_lya_emission = (1 + qso_cat['Z']) * LAMBDA_LYA
+        select_qso = (qso_lya_emission > lambda_min) & (qso_lya_emission < lambda_max)
+    else: # Selecting allowed QSOs with forests convering the full Nyx box range
+        lambda_lyaforest_min = 1060 # Value in rest frame
+        lambda_lyaforest_max = 1200 # Value in rest frame
+        qso_lambda_lyaforest_min = (1 + qso_cat['Z']) * lambda_lyaforest_min # Observed wavelengths
+        qso_lambda_lyaforest_max = (1 + qso_cat['Z']) * lambda_lyaforest_max # Observed wavelengths
+        select_qso = (qso_lambda_lyaforest_min < lambda_min) & (qso_lambda_lyaforest_max > lambda_max)
+
+    if np.sum(select_qso)==0:
+        print('no qso verifying the condition')
     
     # Allowed z_qso and corresponding tid
     z_qso_list = np.array(qso_cat['Z'][select_qso])
