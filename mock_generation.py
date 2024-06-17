@@ -363,6 +363,7 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
             X_array = np.ones(Nx) * X
             Y_array = np.ones(Ny) * Y
             
+            # transmission_los and/ delta_los computation and point_positions
             point_positions = np.transpose(np.array([X_array, Y_array, Nz_array])) # Z_array = Nz_array, all the z axis is used always
             los_at_point_positions = interp_function_box(point_positions) # = delta_los if deltas box and = transmission_los if transmissions box
             if n_replic != 1:
@@ -372,11 +373,14 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
                 if n_replic != 1:
                     delta_los_at_point_positions = np.tile(delta_los_at_point_positions, n_replic)
 
-            # Rescaling tau as function of redshift
+            # Rescaling tau as function of redshift, in this case both transmission_los and delta_los will be recomputed
+            # otherwise, only those from interpolation are saved in table
             if tau_rescaling_with_redshift and box_type == 'transmissions':
                 tau_los = -np.log(los_at_point_positions)
                 rescaled_tau_los = tau_los * rescaling_factor_los
                 los_at_point_positions = np.exp(-rescaled_tau_los) # los_at_point_positions is a T array here
+                # Computing delta_los_at_point_positions from rescaled los_at_point_positions
+                delta_los_at_point_positions = (los_at_point_positions / flux_goal_los) - 1
 
             # Conversion factor from Mpc to degree
             deg_to_Mpc = cosmo.comoving_distance(z_box).value * np.pi / 180
