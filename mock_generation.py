@@ -133,7 +133,7 @@ def run_mock_generation(output_file, Nx, Ny, Nz, pixel_size, los_number, overwri
     all_los_table.close()
 
 
-def rescale_tau(tau_grid, mean_flux_goal, verbose=True):
+def rescale_tau(tau_grid, mean_flux_goal, return_scaling_factor=False, verbose=True):
     """ This function rescales the tau grid to a goal value
 
     Arguments:
@@ -143,6 +143,9 @@ def rescale_tau(tau_grid, mean_flux_goal, verbose=True):
 
     mean_flux_foal: Float
     The desired value of mean flux after rescaling. It must be between 0 and 1
+
+    return_scaling_factor: Boolean
+    If true, the scaling_factor will also be returned in output
 
     Return:
     -------
@@ -191,7 +194,10 @@ def rescale_tau(tau_grid, mean_flux_goal, verbose=True):
         print('  Goal mean flux =', mean_flux_goal)
         print('  Rescaled tau has mean flux = ', np.mean(np.exp(-tau_rescaled)))
 
-    return tau_rescaled
+    if return_scaling_factor:
+        return tau_rescaled, scaling_factor
+    else:
+        return tau_rescaled
 
 
 def preprocess_simulation_tau_grid(tau_grid, out_type, tau_rescaling=False, mean_flux_goal=None):
@@ -200,6 +206,7 @@ def preprocess_simulation_tau_grid(tau_grid, out_type, tau_rescaling=False, mean
             - It comuptes the transmission/F = exp(-tau) (/tau_rescaled)
             - If out_type is 'transmissions' it returns F
             - Or if out_type is 'deltas' it returns delta = F / mean(F) - 1
+        PS: The rescaling done here is done for the same mean_flux_goal as function of redshift
 
     Arguments:
     ----------
@@ -237,7 +244,7 @@ def preprocess_simulation_tau_grid(tau_grid, out_type, tau_rescaling=False, mean
         return (transmissions_grid / transmissions_grid.mean()) - 1
 
 
-def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False, n_replic=1):
+def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False, n_replic=1, tau_rescaling_with_redshift=False, rescaling_factor_list=None):
     """ Draw LOS from a simulation_Transmissions/simulation_Deltas/GRF box in real space and converts their cartesian coordinates to sky coordinates (ra,dec) in degree
     PS: this code draws LOS from the provided box without changing the type, i.e. if the box is a Deltas box, delta_los will be stored in all_los_table output,
     and if the box is a Transmissions box, transmission_los will be stored in all_los_table output
@@ -268,6 +275,15 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
     n_replic: float, default: 1
     Number of replications of box we want in order to extend our LOS
 
+    tau_rescaling_with_redshift: boolean, default: false
+    Rescale tau as function of redshift
+
+    rescaling_factor_list: list
+    Rescaling factor used to rescale tau of the drawn los as function of z, it is computed using the rescale_tau function
+    First column is flux_goal_array at which the rescaling factor was computed
+    Second column is rescaling factor
+    PS: This rescaling factor is computed from a specific simulation box, i.e. the rescaling factor list must be the one corresponding to the box used to draw los here
+
     Return:
     -------
     all_los_table: Table, one column per LOS
@@ -286,12 +302,31 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
         Nz_array_for_replic = np.arange(0, n_replic * Nz, 1)
 
     ## TODO: cosmo pars should be args
-    # Computing cosmo used for cartesian to sky coordinates conversion
+    # Computing cosmo
     Omega_m = 0.3153
     h = 0.7
     cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
 
-    # Initializing table
+    # Defining redshift array
+    if for_qq: # Here redshift array will be defined non-linearly (equivalently for wavelength)
+        redshift_array = np.zeros((n_replic * Nz))
+        redshift_array[0] = z_box
+        for i in range(1, len(redshift_array)):
+            redshift_array[i] = redshift_array[i-1] + (cosmo.H(redshift_array[i-1]).value * (pixel_size / h) / (SPEED_LIGHT))
+    else: # Here redshift will be linear (equivalently for wavelength)
+        if n_replic != 1: # In the replicate case, must use Nz_array_for_replic
+            redshift_array = z_box + (cosmo.H(z_box).value * (Nz_array_for_replic * pixel_size / h) / (SPEED_LIGHT)) # there must be a  / factor 0.7
+        else: # This is the usual case with no replic and not for qq case
+            redshift_array = z_box + (cosmo.H(z_box).value * (Nz_array * pixel_size / h) / (SPEED_LIGHT)) # there must be a  / factor 0.7
+
+    # Preparing for tau rescaling
+    if tau_rescaling_with_redshift && box_type=='transmissions':
+        flux_goal_los = np.exp(-25e-4 * (1 + redshift_array)**3.7)
+        rescaling_factor_los = np.interp(rescaling_factor_list[1], rescaling_factor_list[0], flux_goal_los)
+    elif tau_rescaling_with_redshift && box_type=='deltas':
+        print('Warning, input box type is not transmissions, therefore no rescaling could be applied')
+
+    # Initializing table of lines-of-sight
     couples_list = []
     all_los_table = Table()
     all_los_table['ra'] = np.zeros(los_number)
@@ -308,18 +343,6 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
         all_los_table['delta_los'] = np.zeros((los_number, n_replic * Nz))
     all_los_table['wavelength'] = np.zeros((los_number, n_replic * Nz))
 
-    # Defining redshift array
-    if for_qq: # Here redshift array will be defined non-linearly (equivalently for wavelength)
-        z = np.zeros((n_replic * Nz))
-        z[0] = z_box
-        for i in range(1, len(z)):
-            z[i] = z[i-1] + (cosmo.H(z[i-1]).value * (pixel_size / h) / (SPEED_LIGHT))
-    else: # Here redshift will be linear (equivalently for wavelength)
-        if n_replic != 1: # but if we want to replicate must take an extended Nz_array being the Nz_array_for_replic
-            z = z_box + (cosmo.H(z_box).value * (Nz_array_for_replic * pixel_size / h) / (SPEED_LIGHT)) # there must be a  / factor 0.7
-        else: # This is the usual case with no replic and not for qq case
-            z = z_box + (cosmo.H(z_box).value * (Nz_array * pixel_size / h) / (SPEED_LIGHT)) # there must be a  / factor 0.7
-
     # Choosing random float values of x and y, interpolating on grid and drawing LOS[x, y, :]
     
     ## Defining interpolation functions on box
@@ -329,7 +352,7 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
         delta_box = (box / mean_box_flux) - 1
         interp_function_delta_box = scipy.interpolate.RegularGridInterpolator((Nx_array, Ny_array, Nz_array), delta_box)
 
-    ## Drawing LOS and save in table
+    ## Drawing LOS and saving in table
     j = 0
     while j<los_number:
         X = np.random.uniform(1, Nx-1)
@@ -337,8 +360,8 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
         couple = (X, Y)
         
         if couples_list.count(couple)==0:
-            X_array = np.ones(Nx)*X
-            Y_array = np.ones(Ny)*Y
+            X_array = np.ones(Nx) * X
+            Y_array = np.ones(Ny) * Y
             
             point_positions = np.transpose(np.array([X_array, Y_array, Nz_array])) # Z_array = Nz_array, all the z axis is used always
             los_at_point_positions = interp_function_box(point_positions) # = delta_los if deltas box and = transmission_los if transmissions box
@@ -348,19 +371,27 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
                 delta_los_at_point_positions = interp_function_delta_box(point_positions)
                 if n_replic != 1:
                     delta_los_at_point_positions = np.tile(delta_los_at_point_positions, n_replic)
-            
+
+            # Rescaling tau as function of redshift
+            if tau_rescaling_with_redshift && box_type == 'transmissions':
+                tau_los = -np.log(los_at_point_positions)
+                rescaled_tau_los = tau_los * rescaling_factor_los
+                los_at_point_positions = np.exp(-rescaled_tau_los) # if box_type is transmissions los_at_point_positions is a T array
+
             # Conversion factor from Mpc to degree
             deg_to_Mpc = cosmo.comoving_distance(z_box).value * np.pi / 180
             
+            # LOS coordinates computation (x,y) and (ra,dec)
             x_coord = X * pixel_size
             y_coord = Y * pixel_size
             
             ra = (x_coord) / (deg_to_Mpc * h)
             dec = (y_coord) / (deg_to_Mpc * h)
 
+            # Filling table
             all_los_table['ra'][j] = ra # degree
             all_los_table['dec'][j] = dec # degree
-            all_los_table['redshift'][j,:] = z # redshift
+            all_los_table['redshift'][j,:] = redshift_array # redshift
             all_los_table['x'][j] = x_coord # Mpc/h
             all_los_table['y'][j] = y_coord # Mpc/h
 
@@ -374,7 +405,7 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
                 all_los_table['delta_los'][j,:] = delta_los_at_point_positions
             elif box_type == 'deltas':
                 all_los_table['delta_los'][j,:] = los_at_point_positions
-            all_los_table['wavelength'][j,:] = (1 + z) * LAMBDA_LYA
+            all_los_table['wavelength'][j,:] = (1 + redshift_array) * LAMBDA_LYA
             
             couples_list.append(couple)     
             j += 1
@@ -384,7 +415,7 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
 
     if noise>0:
         pixel_size_angstrom = (pixel_size / h) * LAMBDA_LYA * cosmo.H(z).value / SPEED_LIGHT
-        noise_per_pixel = noise * np.sqrt(1/pixel_size_angstrom)  # sigma(delta_F) ~ 1/sqrt(pixel size)
+        noise_per_pixel = noise * np.sqrt(1 / pixel_size_angstrom)  # sigma(delta_F) ~ 1/sqrt(pixel size)
         all_los_table['delta_los'] += np.random.normal(scale=noise_per_pixel, size=(los_number, Nz))
 
     return all_los_table
