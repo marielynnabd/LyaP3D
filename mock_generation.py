@@ -320,10 +320,10 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
             redshift_array = z_box + (cosmo.H(z_box).value * (Nz_array * pixel_size / h) / (SPEED_LIGHT)) # there must be a  / factor 0.7
 
     # Preparing for tau rescaling
-    if tau_rescaling_with_redshift && box_type=='transmissions':
+    if tau_rescaling_with_redshift and box_type=='transmissions':
         flux_goal_los = np.exp(-25e-4 * (1 + redshift_array)**3.7)
         rescaling_factor_los = np.interp(rescaling_factor_list[1], rescaling_factor_list[0], flux_goal_los)
-    elif tau_rescaling_with_redshift && box_type=='deltas':
+    elif tau_rescaling_with_redshift and box_type=='deltas':
         print('Warning, input box type is not transmissions, therefore no rescaling could be applied')
 
     # Initializing table of lines-of-sight
@@ -373,10 +373,10 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
                     delta_los_at_point_positions = np.tile(delta_los_at_point_positions, n_replic)
 
             # Rescaling tau as function of redshift
-            if tau_rescaling_with_redshift && box_type == 'transmissions':
+            if tau_rescaling_with_redshift and box_type == 'transmissions':
                 tau_los = -np.log(los_at_point_positions)
                 rescaled_tau_los = tau_los * rescaling_factor_los
-                los_at_point_positions = np.exp(-rescaled_tau_los) # if box_type is transmissions los_at_point_positions is a T array
+                los_at_point_positions = np.exp(-rescaled_tau_los) # los_at_point_positions is a T array here
 
             # Conversion factor from Mpc to degree
             deg_to_Mpc = cosmo.comoving_distance(z_box).value * np.pi / 180
