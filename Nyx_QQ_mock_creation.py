@@ -46,8 +46,10 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, replicated_box=False, recompute_r
     Nyx_mock['qso_id'] = tid_qso[random_index]
 
     # Patching T=1 and delta=0 when > Lya emission peak
-    Nyx_mock['transmission_los'][Nyx_mock['wavelength'] > LAMBDA_LYA * (Nyx_mock['z_qso'] + 1)] = 1.0
-    Nyx_mock['delta_los'][Nyx_mock['wavelength'] > LAMBDA_LYA * (Nyx_mock['z_qso'] + 1)] = 0
+    z_qso = Nyx_mock['z_qso'][:, np.newaxis]
+    wavelength = Nyx_mock['wavelength']
+    Nyx_mock['transmission_los'][wavelength > LAMBDA_LYA * (z_qso + 1)] = 1.0
+    Nyx_mock['delta_los'][wavelength > LAMBDA_LYA * (z_qso + 1)] = 0
 
     # Recomputing ra dec using the z_qso
     if recompute_radec:
