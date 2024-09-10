@@ -310,7 +310,7 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
     # Defining redshift array
     if for_qq: # Here redshift array will be defined non-linearly (equivalently for wavelength)
         redshift_array = np.zeros((n_replic * Nz))
-        redshift_array[0] = z_box
+        redshift_array[0] = z_box - 0.1
         for i in range(1, len(redshift_array)):
             redshift_array[i] = redshift_array[i-1] + (cosmo.H(redshift_array[i-1]).value * (pixel_size / h) / (SPEED_LIGHT))
     else: # Here redshift will be linear (equivalently for wavelength)
