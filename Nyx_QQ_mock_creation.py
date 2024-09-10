@@ -45,11 +45,11 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, replicated_box=False, recompute_r
     Nyx_mock['z_qso'] = allowed_z_qso[random_index]
     Nyx_mock['qso_id'] = tid_qso[random_index]
 
-    # Patching T=1 and delta=0 when > Lya emission peak
+    # Patching T=1 when > Lya emission peak, just for_qq
     z_qso = Nyx_mock['z_qso'][:, np.newaxis]
     wavelength = Nyx_mock['wavelength']
-    Nyx_mock['transmission_los'][wavelength > LAMBDA_LYA * (z_qso + 1)] = 1.0
-    Nyx_mock['delta_los'][wavelength > LAMBDA_LYA * (z_qso + 1)] = 0
+    Nyx_mock['transmission_los_for_qq'] = Nyx_mock['transmission_los']
+    Nyx_mock['transmission_los_for_qq'][wavelength > LAMBDA_LYA * (z_qso + 1)] = 1.0
 
     # Recomputing ra dec using the z_qso
     if recompute_radec:
@@ -195,7 +195,7 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mock, outdir, healpix_nside, healpix_nest):
         WAVELENGTH = np.array(mock_in_pix['wavelength'][0]) # Since all my wavelength arrays are the same
 
         # F_LYA from mock
-        F_LYA = np.array(mock_in_pix['transmission_los'])
+        F_LYA = np.array(mock_in_pix['transmission_los_for_qq'])
 
         # HEADER
         header_for_all = [{'name':"LYA", 'value': LAMBDA_LYA, 'comment':"LYA wavelength"},
@@ -208,4 +208,34 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mock, outdir, healpix_nside, healpix_nest):
         output_fits_image.write(np.float32(WAVELENGTH), extname='WAVELENGTH', header=header_for_all) # WAVELENGTH HDU
         output_fits_image.write(np.float32(F_LYA), extname='F_LYA', header=header_for_all) # F_LYA HDU
         output_fits_image.close()
+
+
+def create_mock_chunk(full_mock_table, z_min, z_max):
+    """ This function creates a chunk of the full mock within one redshift bin """
+
+    # Definig mask
+    mask = (full_mock_table[0]['redshift'] > z_min) & (full_mock_table[0]['redshift'] < z_max)
+
+    # Creating new_mock chunk
+    new_mock = Table()
+    new_mock['ra'] = full_mock_table['ra']
+    new_mock['dec'] = full_mock_table['dec']
+    new_mock['redshift'] = np.zeros((len(full_mock_table), np.sum(mask)))
+    new_mock['x'] = full_mock_table['x']
+    new_mock['y'] = full_mock_table['y']
+    new_mock['z'] = np.zeros((len(full_mock_table), np.sum(mask)))
+    new_mock['transmission_los'] = np.zeros((len(full_mock_table), np.sum(mask)))
+    new_mock['delta_los'] = np.zeros((len(full_mock_table), np.sum(mask)))
+    new_mock['wavelength'] = np.zeros((len(full_mock_table), np.sum(mask)))
+    new_mock['z_qso'] = full_mock_table['z_qso']
+    new_mock['qso_id'] = full_mock_table['qso_id']
+    new_mock['new_ra'] = full_mock_table['new_ra']
+    new_mock['new_dec'] = full_mock_table['new_dec']
+    new_mock['hpix'] = full_mock_table['hpix']
+
+    for i in range(len(new_mock)):
+        for key in ['redshift', 'z', 'transmission_los', 'delta_los', 'wavelength']:
+            new_mock[key][i] = full_mock_table[key][i][mask]
+
+    return new_mock
 
