@@ -244,51 +244,55 @@ def preprocess_simulation_tau_grid(tau_grid, out_type, tau_rescaling=False, mean
         return (transmissions_grid / transmissions_grid.mean()) - 1
 
 
-def draw_los(box, box_type, los_number, pixel_size, z_box, ra_start=0, dec_start=0, noise=0, for_qq=False, n_replic=1, tau_rescaling_with_redshift=False, rescaling_factor_list=None):
-    """ Draw LOS from a simulation_Transmissions/simulation_Deltas/GRF box in real space and converts their cartesian coordinates to sky coordinates (ra,dec) in degree
+def draw_los(box, box_type, los_number, pixel_size, z_box, ra_start=0, dec_start=0, noise=0, for_qq=False, n_replic=1, tau_rescaling_with_redshift=False, rescaling_factor_list=None, output_file_name=None):
+    """ Draw LOS from a simulation_Transmissions/simulation_Deltas/GRF box in real space and converts their cartesian coordinates to sky coordinates (ra,dec) in degree.
     PS: this code draws LOS from the provided box without changing the type, i.e. if the box is a Deltas box, delta_los will be stored in all_los_table output,
-    and if the box is a Transmissions box, transmission_los will be stored in all_los_table output
+    and if the box is a Transmissions box, transmission_los will be stored in all_los_table output.
     
     Arguments:
     ----------
     box: 3D matrix of size [Nx, Ny, Nz]
-    Box could be a GRF box (deltas), Transmissions of a simulation box, or Deltas of a simulation box = F/mean(F) - 1 (usually in real space)
+    Box could be a GRF box (deltas), Transmissions of a simulation box, or Deltas of a simulation box = F/mean(F) - 1 (usually in real space).
     
     box_type: string
-    Type of the box, could be: 'transmissions', 'deltas' (Deltas accounts for both GRF boxes or Deltas from simulations)
+    Type of the box, could be: 'transmissions', 'deltas' (Deltas accounts for both GRF boxes or Deltas from simulations).
     
     los_number: float
-    Number of LOS we want to draw
+    Number of LOS we want to draw.
     
     pixel_size: float
-    Cell's size in [Mpc/h]
+    Cell's size in [Mpc/h].
     
     z_box: float
-    Redshift of box
+    Redshift of box.
     
     ra_start: float, default: 0
-    Starting point of the ra coordinate used for tiling over DESI footprint
+    Starting point of the ra coordinate used for tiling over DESI footprint.
 
     dec_start: float, default: 0
-    Starting point of the dec coordinate used for tiling over DESI footprint
+    Starting point of the dec coordinate used for tiling over DESI footprint.
 
     noise: float
-    Add white gaussian fluctuations to the deltas: noise = sigma(delta_los) per Angstrom
+    Add white gaussian fluctuations to the deltas: noise = sigma(delta_los) per Angstrom.
 
     for_qq: boolean
-    If for qq the box will have a non linear redshift and wavelength distribution
+    If for qq the box will have a non linear redshift and wavelength distribution.
 
     n_replic: float, default: 1
-    Number of replications of box we want in order to extend our LOS
+    Number of replications of box we want in order to extend our LOS.
 
     tau_rescaling_with_redshift: boolean, default: false
-    Rescale tau as function of redshift
+    Rescale tau as function of redshift.
 
     rescaling_factor_list: list
     Rescaling factor used to rescale tau of the drawn los as function of z, it is computed using the rescale_tau function
     First column is flux_goal_array at which the rescaling factor was computed
     Second column is rescaling factor
-    PS: This rescaling factor is computed from a specific simulation box, i.e. the rescaling factor list must be the one corresponding to the box used to draw los here
+    PS: This rescaling factor is computed from a specific simulation box, i.e. the rescaling factor list must be the one corresponding to the box used to draw los here.
+
+    output_file_name: string, default: None
+    If provided, it should include the path to outdir and file name in fits.gz format, and the mock will be written to file.
+    Otherwise, it will not be written.
 
     Return:
     -------
@@ -433,6 +437,11 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, ra_start=0, dec_start
         pixel_size_angstrom = (pixel_size / h) * LAMBDA_LYA * cosmo.H(z).value / SPEED_LIGHT
         noise_per_pixel = noise * np.sqrt(1 / pixel_size_angstrom)  # sigma(delta_F) ~ 1/sqrt(pixel size)
         all_los_table['delta_los'] += np.random.normal(scale=noise_per_pixel, size=(los_number, Nz))
+
+    if output_file_name is not None:
+        Nyx_mock = fitsio.FITS(output_file_name, 'rw', clobber=True)
+        Nyx_mock.write(all_los_table.as_array())
+        Nyx_mock.close()
 
     return all_los_table
 
