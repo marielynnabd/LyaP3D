@@ -12,24 +12,28 @@ from tools import LAMBDA_LYA
 from astropy.cosmology import FlatLambdaCDM
 
 
-def add_missing_args_to_Nyxmock(Nyx_mock_file, replicated_box=False, recompute_radec=False):
+def add_missing_args_to_Nyxmock(Nyx_mock_file, replicated_box=False, recompute_radec=False, output_file_name=None):
     """ This function adds the missing arguments 'z_qso', 'qso_id', 'hpix' to Nyxmock, so that it contains the arguments required for QQ
     It is the adapted using the following function
     
     Arguments:
     ----------
     Nyx_mock_file: String
-    The mock file containing a fits table with only 1 HDU, where each row corresponds to a QSO, obtained using draw_los in mock_generation (transmissions)
+    The mock file containing a fits table with only 1 HDU, where each row corresponds to a QSO, obtained using draw_los in mock_generation (transmissions).
 
-    replicated_box: Same description as in lits_of_allowed_qso function
+    replicated_box: Same description as in lits_of_allowed_qso function.
 
     recompute_radec: Bool, default: False
-    If True, ra dec coordinates will be recomputed using the assigned z_qso
+    If True, ra dec coordinates will be recomputed using the assigned z_qso.
+
+    output_file_name: string, default: None
+    If provided, it should include the path to outdir and file name in fits.gz format, and the mock will be written to file.
+    Otherwise, it will not be written.
 
     Return:
     -------
     Nyx_mock: Fits table
-    It will contain [qso_id, z_qso, ra, dec, hpix, wavelength, transmission_los], same as Nyx_mock in input but with added args
+    It will contain [qso_id, z_qso, ra, dec, hpix, wavelength, transmission_los], same as Nyx_mock in input but with added args.
     """
     
     Nyx_mock = Table.read(Nyx_mock_file)
@@ -68,6 +72,11 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, replicated_box=False, recompute_r
         Nyx_mock['hpix'] = hp.ang2pix(nside, Nyx_mock['new_ra'], Nyx_mock['new_dec'], nest, lonlat=True)
     except:
         Nyx_mock['hpix'] = hp.ang2pix(nside, Nyx_mock['ra'], Nyx_mock['dec'], nest, lonlat=True)
+
+    if output_file_name is not None:
+        Nyx_mock_to_write = fitsio.FITS(output_file_name, 'rw', clobber=True)
+        Nyx_mock_to_write.write(Nyx_mock.as_array())
+        Nyx_mock_to_write.close()
 
     return Nyx_mock
 
