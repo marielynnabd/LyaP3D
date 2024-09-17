@@ -244,7 +244,7 @@ def preprocess_simulation_tau_grid(tau_grid, out_type, tau_rescaling=False, mean
         return (transmissions_grid / transmissions_grid.mean()) - 1
 
 
-def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False, n_replic=1, tau_rescaling_with_redshift=False, rescaling_factor_list=None):
+def draw_los(box, box_type, los_number, pixel_size, z_box, ra_start=0, dec_start=0, noise=0, for_qq=False, n_replic=1, tau_rescaling_with_redshift=False, rescaling_factor_list=None):
     """ Draw LOS from a simulation_Transmissions/simulation_Deltas/GRF box in real space and converts their cartesian coordinates to sky coordinates (ra,dec) in degree
     PS: this code draws LOS from the provided box without changing the type, i.e. if the box is a Deltas box, delta_los will be stored in all_los_table output,
     and if the box is a Transmissions box, transmission_los will be stored in all_los_table output
@@ -266,6 +266,12 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
     z_box: float
     Redshift of box
     
+    ra_start: float, default: 0
+    Starting point of the ra coordinate used for tiling over DESI footprint
+
+    dec_start: float, default: 0
+    Starting point of the dec coordinate used for tiling over DESI footprint
+
     noise: float
     Add white gaussian fluctuations to the deltas: noise = sigma(delta_los) per Angstrom
 
@@ -386,18 +392,24 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, noise=0, for_qq=False
             deg_to_Mpc = cosmo.comoving_distance(z_box).value * np.pi / 180
             
             # LOS coordinates computation (x,y) and (ra,dec)
-            x_coord = X * pixel_size
-            y_coord = Y * pixel_size
-            
-            ra = (x_coord) / (deg_to_Mpc * h)
-            dec = (y_coord) / (deg_to_Mpc * h)
+            ## Coordinates that fit in box or replicated box
+            x_coord = (X * pixel_size)
+            y_coord = (Y * pixel_size)
+
+            ## Corresponding ra and dec coordinates with or without shifting over footprint
+            ra = (x_coord) / (deg_to_Mpc * h) + ra_start
+            dec = (y_coord) / (deg_to_Mpc * h) + dec_start
+
+            ## x and y coordinates after having shifted ra, dec, = x_coord and y_coord if ra_start and dec_start = 0
+            x_coord_shifted = ra * deg_to_Mpc * h
+            y_coord_shifted = dec * deg_to_Mpc * h
 
             # Filling table
             all_los_table['ra'][j] = ra # degree
             all_los_table['dec'][j] = dec # degree
             all_los_table['redshift'][j,:] = redshift_array # redshift
-            all_los_table['x'][j] = x_coord # Mpc/h
-            all_los_table['y'][j] = y_coord # Mpc/h
+            all_los_table['x'][j] = x_coord_shifted # Mpc/h
+            all_los_table['y'][j] = y_coord_shifted # Mpc/h
 
             if n_replic != 1:
                 all_los_table['z'][j,:] = Nz_array_for_replic * pixel_size # Mpc/h
