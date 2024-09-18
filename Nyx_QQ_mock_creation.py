@@ -131,10 +131,11 @@ def list_of_allowed_qso(lambda_min, lambda_max, replicated_box=False):
     return z_qso_list, qso_tid_list
 
 
-def adapt_Nyxmock_to_QQ_input(Nyx_mock, outdir, healpix_nside, healpix_nest):
-    """ This function first reads a mock of LOS transmissions created from a Nyx simulation 
+def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest):
+    """ This function first reads a mock or several mocks of LOS transmissions created from a Nyx simulation
     using the draw_los function in mock_generation.py and adapts it to the input format accepted by Quickquasars (i.e. fits table to fits image)
     It treats separately the LOS by healpix_pixel subsets and creates separate output transmission files for each healpix_pixel (as required by QQ)
+    In the end, it returns 1 transmission file per hpix, combining LOS from several mocks if several mocks were given in the input
     
     PS: The important HDUs to have in the input files given to QQ (i.e. the output file of this function) 
     are the METADATA, WAVELENGTH and F_LYA (or TRANSMISSION) (According to the QQ paper arXiv:2401.00303)
@@ -146,65 +147,72 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mock, outdir, healpix_nside, healpix_nest):
 
     Arguments:
     ----------
-    Nyx_mock: Fits table
-    The fits table contains only 1 HDU, where each row corresponds to a QSO.
+    Nyx_mock_dir: String
+    Path to the directory where 1 or more Nyx mocks are stored. PS: this directory must only contain mocks with .fits.gz format otherwise the code will try to read the other files and crash.
+    The fits table per mock contains only 1 HDU, where each row corresponds to a QSO
     It must contain [qso_id, z_qso, ra, dec, hpix, wavelength, transmission_los]
-    
+
     outdir: String
     Directory to store outputs
-    
+
     healpix_nside: Float
     nside used in the healpy conversion from ra,dec to hpix
-    
+
     healpix_nest: Boolean
     healpix scheme (usually we use TRUE for nested scheme)
 
     Return:
     -------
     output_fits_image: Fits file
-    Fits file with several HDUs: METADATA, WAVELENGTH and F_LYA. 
-    The function might several outputs depending on the different hpix in the input mock, where each of the outputs is written in outdir
+    Fits file with several HDUs: METADATA, WAVELENGTH and F_LYA
+    The function might have several outputs depending on the different hpix in the input mock(s), where each of the outputs is written in outdir
     """
 
-    # # Reading input mock
-    # Nyx_mock = Table.read(Nyx_mock_file)
-    
-    # Checking for different hpix
-    all_pixels = set(Nyx_mock['hpix'])
-    print('This mock contains LOS in the following pixels:', all_pixels)
-    
+    # Reading input Nyx mocks
+    searchstr = '*'
+    mocks_files = glob.glob(os.path.join(Nyx_mocks_dir, f"{searchstr}.fits.gz"))
+
+    # Checking for different hpix in all mocks
+    all_pixels = set()
+    for mock_file_name in mocks_files:
+        mock = Table.read(mock_file_name)
+        mock_pixels = set(mock['hpix'])
+        all_pixels.update(mock_pixels)
+
     # Looping over the pixels, one output file will be written at the end of each loop
     for ipix, pix in enumerate(all_pixels):
+        pix_mock = Table()
+        for mock_file_name in mocks_files:
+            mock = Table.read(mock_file_name)
+            if np.any(mock['hpix'] == pix):
+                select_pix = (mock['hpix'] == pix)
+                pix_mock = vstack([pix_mock, mock[select_pix]])
+        pix_N_los = np.sum((pix_mock['hpix'] == pix))
+        print('Number of LOS in pixel '+str(pix)+' is:', pix_N_los)
 
         # Preparing outfiles
-        select_pix = (Nyx_mock['hpix'] == pix)
-        print('Number of LOS in pixel '+str(pix)+' is:', np.sum(select_pix))
-        # fname = outdir+'/{}/{}/transmission-{}-{}.fits.gz'.format(pix//100, pix, healpix_nside, pix)
         fname = outdir+'/transmission-{}-{}.fits.gz'.format(healpix_nside, pix)
         print('LOS in this pixel will be stored in:', fname)
         output_fits_image = fitsio.FITS(fname, 'rw', clobber=True)
 
-        # Reading the part of the table that only corresponds to pix
-        mock_in_pix = Nyx_mock[select_pix]
-
         # METADATA from mock
         try:
-            RA = np.array(mock_in_pix['new_ra'])
-            DEC = np.array(mock_in_pix['new_dec'])
+            RA = np.array(pix_mock['new_ra'])
+            DEC = np.array(pix_mock['new_dec'])
         except:
-            RA = np.array(mock_in_pix['ra'])
-            DEC = np.array(mock_in_pix['dec'])
-        Z = np.array(mock_in_pix['z_qso'])
-        Z_noRSD = np.array(mock_in_pix['z_qso'])
-        MOCKID = np.array(mock_in_pix['qso_id'])
+            RA = np.array(pix_mock['ra'])
+            DEC = np.array(pix_mock['dec'])
+        Z = np.array(pix_mock['z_qso'])
+        Z_noRSD = np.array(pix_mock['z_qso'])
+        MOCKID = np.array(pix_mock['qso_id'])
         meta_data_table = [np.float64(RA), np.float64(DEC), np.float64(Z), np.float64(Z_noRSD), MOCKID]
         meta_data_names = ['RA', 'DEC', 'Z', 'Z_noRSD', 'MOCKID']
 
         # WAVELENGTH from mock
-        WAVELENGTH = np.array(mock_in_pix['wavelength'][0]) # Since all my wavelength arrays are the same
+        WAVELENGTH = np.array(pix_mock['wavelength'][0]) # Since all my wavelength arrays are the same
 
         # F_LYA from mock
-        F_LYA = np.array(mock_in_pix['transmission_los_for_qq'])
+        F_LYA = np.array(pix_mock['transmission_los_for_qq'])
 
         # HEADER
         header_for_all = [{'name':"LYA", 'value': LAMBDA_LYA, 'comment':"LYA wavelength"},
