@@ -131,7 +131,7 @@ def list_of_allowed_qso(lambda_min, lambda_max, replicated_box=False):
     return z_qso_list, qso_tid_list
 
 
-def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest):
+def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest, all_pixels=None):
     """ This function first reads a mock or several mocks of LOS transmissions created from a Nyx simulation
     using the draw_los function in mock_generation.py and adapts it to the input format accepted by Quickquasars (i.e. fits table to fits image)
     It treats separately the LOS by healpix_pixel subsets and creates separate output transmission files for each healpix_pixel (as required by QQ)
@@ -161,6 +161,11 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest
     healpix_nest: Boolean
     healpix scheme (usually we use TRUE for nested scheme)
 
+    all_pixels: List of floats, default: None
+    List of pixels hpix for which we want to create the transmission files.
+    If None, the code will have to read all mocks one by one, to find the list of pixels existing in these mocks, which consumes ~1hour.
+    PS: at the end of add_missing_args_to_Nyxmock, the coords hpix could be saved.
+
     Return:
     -------
     output_fits_image: Fits file
@@ -173,11 +178,12 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest
     mocks_files = glob.glob(os.path.join(Nyx_mocks_dir, f"{searchstr}.fits.gz"))
 
     # Checking for different hpix in all mocks
-    all_pixels = set()
-    for mock_file_name in mocks_files:
-        mock = Table.read(mock_file_name)
-        mock_pixels = set(mock['hpix'])
-        all_pixels.update(mock_pixels)
+    if all_pixels in None:
+        all_pixels = set()
+        for mock_file_name in mocks_files:
+            mock = Table.read(mock_file_name)
+            mock_pixels = set(mock['hpix'])
+            all_pixels.update(mock_pixels)
 
     # Looping over the pixels, one output file will be written at the end of each loop
     for ipix, pix in enumerate(all_pixels):
