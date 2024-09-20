@@ -3,7 +3,7 @@
 import numpy as np
 import healpy as hp
 from astropy.io import fits
-from astropy.table import Table
+from astropy.table import Table, vstack
 import fitsio
 import sys, os, glob
 import multiprocessing
