@@ -213,7 +213,7 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest
     mocks_files = glob.glob(os.path.join(Nyx_mocks_dir, f"{searchstr}.fits.gz"))
 
     # Checking for different hpix in all mocks
-    if all_pixels in None:
+    if all_pixels is None:
         all_pixels = set()
         for mock_file_name in mocks_files:
             mock = Table.read(mock_file_name)
