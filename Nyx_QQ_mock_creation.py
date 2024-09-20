@@ -5,7 +5,10 @@ import healpy as hp
 from astropy.io import fits
 from astropy.table import Table
 import fitsio
-import sys, os
+import sys, os, glob
+import multiprocessing
+from multiprocessing import Pool
+
 sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
 from tools import LAMBDA_LYA
 
@@ -131,7 +134,35 @@ def list_of_allowed_qso(lambda_min, lambda_max, replicated_box=False):
     return z_qso_list, qso_tid_list
 
 
-def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest, all_pixels=None):
+def filter_mock_per_hpix(mock_file_name, hpix_value):
+    """ This funtion reads a mock and gives as output a filtered mock that only contains LOS inside a certain healpix pixel of value hpix_value
+
+    Arguments:
+    ----------
+    mock_table: String
+    Mock file
+
+    hpix_value: Float
+    Value of the healpix pixel
+
+    Return:
+    -------
+    filtered_mock_per_hpix: Table
+    Filtered mock table
+    """
+
+    mock_table = Table.read(mock_file_name)
+
+    filtered_mock_per_hpix = Table()
+
+    if np.any(mock_table['hpix'] == hpix_value):
+        select_pix = (mock_table['hpix'] == hpix_value)
+        filtered_mock_per_hpix = vstack([filtered_mock_per_hpix, mock_table[select_pix]])
+
+    return filtered_mock_per_hpix
+
+
+def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest, all_pixels=None, use_multiprocessing=False):
     """ This function first reads a mock or several mocks of LOS transmissions created from a Nyx simulation
     using the draw_los function in mock_generation.py and adapts it to the input format accepted by Quickquasars (i.e. fits table to fits image)
     It treats separately the LOS by healpix_pixel subsets and creates separate output transmission files for each healpix_pixel (as required by QQ)
@@ -166,6 +197,10 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest
     If None, the code will have to read all mocks one by one, to find the list of pixels existing in these mocks, which consumes ~1hour.
     PS: at the end of add_missing_args_to_Nyxmock, the coords hpix could be saved.
 
+    use_mutliprocessing: Boolean, default: False
+    If use_multiprocessing, fir each pixel in all_pixels, the reading of mocks is parallelized to. PS: This must not be used if only one mock file is given in input,
+    and it is strongly recommended to use it if many mock files are being processed.
+
     Return:
     -------
     output_fits_image: Fits file
@@ -187,12 +222,20 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest
 
     # Looping over the pixels, one output file will be written at the end of each loop
     for ipix, pix in enumerate(all_pixels):
-        pix_mock = Table()
-        for mock_file_name in mocks_files:
-            mock = Table.read(mock_file_name)
-            if np.any(mock['hpix'] == pix):
-                select_pix = (mock['hpix'] == pix)
-                pix_mock = vstack([pix_mock, mock[select_pix]])
+        if use_multiprocessing: # Check if this part could be improved
+            ncpu = multiprocessing.cpu_count()
+            with Pool(ncpu) as pool:
+                output_filter_mock_per_hpix = pool.starmap(
+                    filter_mock_per_hpix,
+                    [[mock_file_name, pix] for mock_file_name in mocks_files]
+                )
+            pix_mock = vstack([output_filter_mock_per_hpix[i] for i in range(len(output_filter_mock_per_hpix))])
+        else:
+            pix_mock = Table()
+            for mock_file_name in mocks_files:
+                mock_part_in_pix = filter_mock_per_hpix(mock_file_name, pix)
+                pix_mock = vstack([pix_mock, mock_part_in_pix])
+
         pix_N_los = np.sum((pix_mock['hpix'] == pix))
         print('Number of LOS in pixel '+str(pix)+' is:', pix_N_los)
 
