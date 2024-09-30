@@ -78,7 +78,8 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, replicated_box=False, recompute_r
 
     if output_file_name is not None:
         Nyx_mock_to_write = fitsio.FITS(output_file_name, 'rw', clobber=True)
-        Nyx_mock_to_write.write(Nyx_mock.as_array())
+        header = [{'name':"FILENAME", 'value': output_file_name}]
+        Nyx_mock_to_write.write(Nyx_mock.as_array(), header=header)
         Nyx_mock_to_write.close()
 
     return Nyx_mock
