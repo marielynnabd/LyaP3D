@@ -163,7 +163,7 @@ def filter_mock_per_hpix(mock_file_name, hpix_value):
     return filtered_mock_per_hpix
 
 
-def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest, all_pixels=None, use_multiprocessing=False):
+def adapt_Nyxmock_to_QQ_input(pixels_dict_file_name, outdir, healpix_nside, healpix_nest, use_multiprocessing=False):
     """ This function first reads a mock or several mocks of LOS transmissions created from a Nyx simulation
     using the draw_los function in mock_generation.py and adapts it to the input format accepted by Quickquasars (i.e. fits table to fits image)
     It treats separately the LOS by healpix_pixel subsets and creates separate output transmission files for each healpix_pixel (as required by QQ)
@@ -179,9 +179,9 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest
 
     Arguments:
     ----------
-    Nyx_mock_dir: String
-    Path to the directory where 1 or more Nyx mocks are stored. PS: this directory must only contain mocks with .fits.gz format otherwise the code will try to read the other files and crash.
-    The fits table per mock contains only 1 HDU, where each row corresponds to a QSO
+    pixels_dict_file_name: Yaml file name
+    File containing all the pixels and for each pixel the corresponding list of Nyx mocks full file names (dir+name) covering the pixel.
+    PS: The fits table per mock contains only 1 HDU, where each row corresponds to a QSO
     It must contain [qso_id, z_qso, ra, dec, hpix, wavelength, transmission_los]
 
     outdir: String
@@ -193,13 +193,8 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest
     healpix_nest: Boolean
     healpix scheme (usually we use TRUE for nested scheme)
 
-    all_pixels: List of floats, default: None
-    List of pixels hpix for which we want to create the transmission files.
-    If None, the code will have to read all mocks one by one, to find the list of pixels existing in these mocks, which consumes ~1hour.
-    PS: at the end of add_missing_args_to_Nyxmock, the coords hpix could be saved.
-
     use_mutliprocessing: Boolean, default: False
-    If use_multiprocessing, fir each pixel in all_pixels, the reading of mocks is parallelized to. PS: This must not be used if only one mock file is given in input,
+    If use_multiprocessing, fir each pixel, the reading of mocks is parallelized. PS: This must not be used if only one mock file is given in input,
     and it is strongly recommended to use it if many mock files are being processed.
 
     Return:
@@ -209,31 +204,23 @@ def adapt_Nyxmock_to_QQ_input(Nyx_mocks_dir, outdir, healpix_nside, healpix_nest
     The function might have several outputs depending on the different hpix in the input mock(s), where each of the outputs is written in outdir
     """
 
-    # Reading input Nyx mocks
-    searchstr = '*'
-    mocks_files = glob.glob(os.path.join(Nyx_mocks_dir, f"{searchstr}.fits.gz"))
-
-    # Checking for different hpix in all mocks
-    if all_pixels is None:
-        all_pixels = set()
-        for mock_file_name in mocks_files:
-            mock = Table.read(mock_file_name)
-            mock_pixels = set(mock['hpix'])
-            all_pixels.update(mock_pixels)
+    # Loading yaml file
+    with open(pixels_dict_file_name, 'r') as file:
+        pixels_dict_data = yaml.safe_load(file)
 
     # Looping over the pixels, one output file will be written at the end of each loop
-    for ipix, pix in enumerate(all_pixels):
+    for pix in pixels_dict_data:
         if use_multiprocessing: # Check if this part could be improved
             ncpu = multiprocessing.cpu_count()
             with Pool(ncpu) as pool:
                 output_filter_mock_per_hpix = pool.starmap(
                     filter_mock_per_hpix,
-                    [[mock_file_name, pix] for mock_file_name in mocks_files]
+                    [[mock_file_name, pix] for mock_file_name in pixels_dict_data[str(pix)]]
                 )
             pix_mock = vstack([output_filter_mock_per_hpix[i] for i in range(len(output_filter_mock_per_hpix))])
         else:
             pix_mock = Table()
-            for mock_file_name in mocks_files:
+            for mock_file_name in pixels_dict_data[str(pix)]:
                 mock_part_in_pix = filter_mock_per_hpix(mock_file_name, pix)
                 pix_mock = vstack([pix_mock, mock_part_in_pix])
 
