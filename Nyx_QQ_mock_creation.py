@@ -8,6 +8,7 @@ import fitsio
 import sys, os, glob
 import multiprocessing
 from multiprocessing import Pool
+import yaml
 
 sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
 from tools import LAMBDA_LYA
