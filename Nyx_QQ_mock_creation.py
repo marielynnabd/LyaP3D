@@ -204,7 +204,7 @@ def adapt_Nyxmock_to_QQ_input(pixels_dict_file_name, outdir, healpix_nside, heal
     Fits file with several HDUs: METADATA, WAVELENGTH and F_LYA
     The function might have several outputs depending on the different hpix in the input mock(s), where each of the outputs is written in outdir
     """
-
+    print('Hey')
     # Loading yaml file
     with open(pixels_dict_file_name, 'r') as file:
         pixels_dict_data = yaml.safe_load(file)
@@ -216,16 +216,17 @@ def adapt_Nyxmock_to_QQ_input(pixels_dict_file_name, outdir, healpix_nside, heal
             with Pool(ncpu) as pool:
                 output_filter_mock_per_hpix = pool.starmap(
                     filter_mock_per_hpix,
-                    [[mock_file_name, pix] for mock_file_name in pixels_dict_data[str(pix)]]
+                    [[mock_file_name, int(pix)] for mock_file_name in pixels_dict_data[str(pix)]]
                 )
-            pix_mock = vstack([output_filter_mock_per_hpix[i] for i in range(len(output_filter_mock_per_hpix))])
+            # pix_mock = vstack([output_filter_mock_per_hpix[i] for i in range(len(output_filter_mock_per_hpix))], join_type='exact')
+            pix_mock = vstack(output_filter_mock_per_hpix, join_type='inner')
         else:
             pix_mock = Table()
             for mock_file_name in pixels_dict_data[str(pix)]:
-                mock_part_in_pix = filter_mock_per_hpix(mock_file_name, pix)
-                pix_mock = vstack([pix_mock, mock_part_in_pix])
+                mock_part_in_pix = filter_mock_per_hpix(mock_file_name, int(pix))
+                pix_mock = vstack([pix_mock, mock_part_in_pix], join_type='inner')
 
-        pix_N_los = np.sum((pix_mock['hpix'] == pix))
+        pix_N_los = np.sum((pix_mock['hpix'] == int(pix)))
         print('Number of LOS in pixel '+str(pix)+' is:', pix_N_los)
 
         # Preparing outfiles
