@@ -204,7 +204,6 @@ def adapt_Nyxmock_to_QQ_input(pixels_dict_file_name, outdir, healpix_nside, heal
     Fits file with several HDUs: METADATA, WAVELENGTH and F_LYA
     The function might have several outputs depending on the different hpix in the input mock(s), where each of the outputs is written in outdir
     """
-    print('Hey')
     # Loading yaml file
     with open(pixels_dict_file_name, 'r') as file:
         pixels_dict_data = yaml.safe_load(file)
