@@ -45,13 +45,13 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, replicated_box=False, recompute_r
     lambda_max_mock = np.max(Nyx_mock['wavelength'][0])
     
     # Computing allowed z_qso
-    allowed_z_qso, tid_qso = list_of_allowed_qso(lambda_min_mock, lambda_max_mock, replicated_box)
+    allowed_z_qso = list_of_allowed_qso(lambda_min_mock, lambda_max_mock, replicated_box)
     
     # Adding z_qso and qso_id
-    # TODO: For later, we might want to choose a certain probability of z_qso
     random_index = np.random.choice(len(allowed_z_qso), size=len(Nyx_mock), replace=False)
     Nyx_mock['z_qso'] = allowed_z_qso[random_index]
-    Nyx_mock['qso_id'] = tid_qso[random_index]
+    tid_qso = np.random.randint(low=0, high=np.iinfo(np.int64).max, size=len(Nyx_mock), dtype=np.int64)
+    Nyx_mock['qso_id'] = tid_qso
 
     # Patching T=1 when > Lya emission peak, just for_qq
     z_qso = Nyx_mock['z_qso'][:, np.newaxis]
@@ -108,11 +108,8 @@ def list_of_allowed_qso(lambda_min, lambda_max, replicated_box=False):
     -------
     z_qso_list: Array of floats
     List of allowed z_qso
-    
-    qso_tid_list: Array of floats
-    List of correspodning TARGETIDs. PS: This is just to assign a TARGETID to our QSOs, but doesn't effectively change anything in the computations
     """
-    
+
     # Loading DESI IRON QSO catalog
     qso_cat = Table.read('/global/homes/m/mabdulka/P3D/DESI_IRON_analysis/catalog_iron_v0_qso_target_nobal_BI.fits.gz')
 
@@ -131,9 +128,8 @@ def list_of_allowed_qso(lambda_min, lambda_max, replicated_box=False):
     
     # Allowed z_qso and corresponding tid
     z_qso_list = np.array(qso_cat['Z'][select_qso])
-    qso_tid_list = np.array(qso_cat['TARGETID'][select_qso])
 
-    return z_qso_list, qso_tid_list
+    return z_qso_list
 
 
 def filter_mock_per_hpix(mock_file_name, hpix_value):
