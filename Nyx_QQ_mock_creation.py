@@ -16,7 +16,7 @@ from tools import LAMBDA_LYA
 from astropy.cosmology import FlatLambdaCDM
 
 
-def add_missing_args_to_Nyxmock(Nyx_mock_file, replicated_box=False, recompute_radec=False, output_file_name=None):
+def add_missing_args_to_Nyxmock(Nyx_mock_file, Nyx_mock_number, mock_realisation_number, replicated_box=False, recompute_radec=False, output_file_name=None):
     """ This function adds the missing arguments 'z_qso', 'qso_id', 'hpix' to Nyxmock, so that it contains the arguments required for QQ
     It is the adapted using the following function
     
@@ -24,6 +24,13 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, replicated_box=False, recompute_r
     ----------
     Nyx_mock_file: String
     The mock file containing a fits table with only 1 HDU, where each row corresponds to a QSO, obtained using draw_los in mock_generation (transmissions).
+
+    Nyx_mock_number: Integer
+    The number of the mock file in one mock realisation which could be 1 if we're using one Nyx box or >1 if we're patching over the DESI footprint.
+    This is mainly used for the qso_id attribution, making sure different QSOs don't have the same ID.
+
+    mock_realisation_number: Integer
+    The number of mock realisation, noting that we're patching over the DESI footprint, a mock realisation contains all the boxes from the footprint.
 
     replicated_box: Same description as in lits_of_allowed_qso function.
 
@@ -39,18 +46,19 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, replicated_box=False, recompute_r
     Nyx_mock: Fits table
     It will contain [qso_id, z_qso, ra, dec, hpix, wavelength, transmission_los], same as Nyx_mock in input but with added args.
     """
-    
+
     Nyx_mock = Table.read(Nyx_mock_file)
     lambda_min_mock = np.min(Nyx_mock['wavelength'][0])
     lambda_max_mock = np.max(Nyx_mock['wavelength'][0])
-    
+    n_los = len(Nyx_mock)
+
     # Computing allowed z_qso
     allowed_z_qso = list_of_allowed_qso(lambda_min_mock, lambda_max_mock, replicated_box)
-    
+
     # Adding z_qso and qso_id
     random_index = np.random.choice(len(allowed_z_qso), size=len(Nyx_mock), replace=False)
     Nyx_mock['z_qso'] = allowed_z_qso[random_index]
-    tid_qso = np.random.randint(low=0, high=np.iinfo(np.int64).max, size=len(Nyx_mock), dtype=np.int64)
+    tid_qso = mock_realisation_number + 100 * Nyx_mock_number + 10000000 * np.arange(1, n_los + 1)
     Nyx_mock['qso_id'] = tid_qso
 
     # Patching T=1 when > Lya emission peak, just for_qq
