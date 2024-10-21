@@ -87,9 +87,9 @@ def get_QQ_Y1_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max
 
         if delta_ID in qso_tid:
             # Reading data
-            delta = _delta[i,:][~np.isnan(_delta[i,:])] # Thse cuts are just to remove the nan that exist in QQ mocks
+            delta = _delta[i,:][~np.isnan(_delta[i,:])] # These cuts are just to remove the nan that exist in QQ mocks
             wavelength = _lambda[~np.isnan(_delta[i,:])]
-            
+
             # Checking if LAMBDA.min < lambda_min & LAMBDA.max > lambda_max
             if (wavelength.min() < lambda_min) and (wavelength.max() > lambda_max):
                 # Define wavelength mask to be applied later to wavelength and delta so that they have the same grid as wavelength_ref
