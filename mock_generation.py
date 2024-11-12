@@ -345,6 +345,8 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, ra_start=0, dec_start
     all_los_table['x'] = np.zeros(los_number)
     all_los_table['y'] = np.zeros(los_number)
     all_los_table['z'] = np.zeros((los_number, n_replic * Nz))
+    all_los_table['ra_start'] = np.ones(los_number) * ra_start
+    all_los_table['dec_start'] = np.ones(los_number) * dec_start
 
     if box_type == 'transmissions': # In this case we would like to save both transmission_los and delta_los
         all_los_table['transmission_los'] = np.zeros((los_number, n_replic * Nz))
@@ -401,19 +403,15 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, ra_start=0, dec_start
             y_coord = (Y * pixel_size)
 
             ## Corresponding ra and dec coordinates with or without shifting over footprint
-            ra = (x_coord) / (deg_to_Mpc * h) + ra_start
+            ra = (x_coord) / (deg_to_Mpc * h * np.cos(ra_start * np.pi / 180)) + ra_start
             dec = (y_coord) / (deg_to_Mpc * h) + dec_start
-
-            ## x and y coordinates after having shifted ra, dec, = x_coord and y_coord if ra_start and dec_start = 0
-            x_coord_shifted = ra * deg_to_Mpc * h
-            y_coord_shifted = dec * deg_to_Mpc * h
 
             # Filling table
             all_los_table['ra'][j] = ra # degree
             all_los_table['dec'][j] = dec # degree
             all_los_table['redshift'][j,:] = redshift_array # redshift
-            all_los_table['x'][j] = x_coord_shifted # Mpc/h
-            all_los_table['y'][j] = y_coord_shifted # Mpc/h
+            all_los_table['x'][j] = x_coord # Mpc/h
+            all_los_table['y'][j] = y_coord # Mpc/h
 
             if n_replic != 1:
                 all_los_table['z'][j,:] = Nz_array_for_replic * pixel_size # Mpc/h
