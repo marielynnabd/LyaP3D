@@ -74,8 +74,8 @@ def add_missing_args_to_Nyxmock(Nyx_mock_file, Nyx_mock_number, mock_realisation
         h = 0.7
         cosmo = FlatLambdaCDM(H0=100*h, Om0=Omega_m)
         deg_to_Mpc = cosmo.comoving_distance(Nyx_mock['z_qso']).value * np.pi / 180
-        Nyx_mock['new_ra'] = Nyx_mock['x'] / (deg_to_Mpc * h)
-        Nyx_mock['new_dec'] = Nyx_mock['y'] / (deg_to_Mpc * h)
+        Nyx_mock['new_ra'] = Nyx_mock['x'] / (deg_to_Mpc * h * np.cos(Nyx_mock['ra_start'] * np.pi / 180)) + Nyx_mock['ra_start']
+        Nyx_mock['new_dec'] = Nyx_mock['y'] / (deg_to_Mpc * h) + Nyx_mock['dec_start']
 
     # Adding hpix coordinate
     nside = 16
