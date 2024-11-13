@@ -403,7 +403,7 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, ra_start=0, dec_start
             y_coord = (Y * pixel_size)
 
             ## Corresponding ra and dec coordinates with or without shifting over footprint
-            ra = (x_coord) / (deg_to_Mpc * h * np.cos(ra_start * np.pi / 180)) + ra_start
+            ra = (x_coord) / (deg_to_Mpc * h * np.cos(dec_start * np.pi / 180)) + ra_start
             dec = (y_coord) / (deg_to_Mpc * h) + dec_start
 
             # Filling table
