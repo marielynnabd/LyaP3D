@@ -232,6 +232,10 @@ def adapt_Nyxmock_to_QQ_input(pixels_dict_file_name, outdir, healpix_nside, heal
         pix_N_los = np.sum((pix_mock['hpix'] == int(pix)))
         print('Number of LOS in pixel '+str(pix)+' is:', pix_N_los)
 
+        if pix_N_los==1: # In order to avoid segmentation errors
+            print('Warning: no transmission file will be saved for this pixel in order to avoid segmentation error')
+            continue
+
         # Preparing outfiles
         fname = outdir+'/transmission-{}-{}.fits.gz'.format(healpix_nside, pix)
         print('LOS in this pixel will be stored in:', fname)
