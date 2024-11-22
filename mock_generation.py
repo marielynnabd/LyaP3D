@@ -244,7 +244,7 @@ def preprocess_simulation_tau_grid(tau_grid, out_type, tau_rescaling=False, mean
         return (transmissions_grid / transmissions_grid.mean()) - 1
 
 
-def draw_los(box, box_type, los_number, pixel_size, z_box, ra_start=0, dec_start=0, noise=0, for_qq=False, n_replic=1, tau_rescaling_with_redshift=False, rescaling_factor_list=None, output_file_name=None):
+def draw_los(box, box_type, los_number, pixel_size, z_box, seed=None, ra_start=0, dec_start=0, noise=0, for_qq=False, n_replic=1, tau_rescaling_with_redshift=False, rescaling_factor_list=None, output_file_name=None):
     """ Draw LOS from a simulation_Transmissions/simulation_Deltas/GRF box in real space and converts their cartesian coordinates to sky coordinates (ra,dec) in degree.
     PS: this code draws LOS from the provided box without changing the type, i.e. if the box is a Deltas box, delta_los will be stored in all_los_table output,
     and if the box is a Transmissions box, transmission_los will be stored in all_los_table output.
@@ -366,15 +366,17 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, ra_start=0, dec_start
 
     ## Drawing LOS and saving in table
     j = 0
+    if seed is not None:
+        np.random.seed(seed)
     while j<los_number:
         X = np.random.uniform(1, Nx-1)
         Y = np.random.uniform(1, Ny-1)
         couple = (X, Y)
-        
+
         if couples_list.count(couple)==0:
             X_array = np.ones(Nx) * X
             Y_array = np.ones(Ny) * Y
-            
+
             # transmission_los and/ delta_los computation and point_positions
             point_positions = np.transpose(np.array([X_array, Y_array, Nz_array])) # Z_array = Nz_array, all the z axis is used always
             los_at_point_positions = interp_function_box(point_positions) # = delta_los if deltas box and = transmission_los if transmissions box
