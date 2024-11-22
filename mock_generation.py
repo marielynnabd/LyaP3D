@@ -374,8 +374,8 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, seed=None, ra_start=0
         couple = (X, Y)
 
         if couples_list.count(couple)==0:
-            X_array = np.ones(Nx) * X
-            Y_array = np.ones(Ny) * Y
+            X_array = np.ones(Nz) * X
+            Y_array = np.ones(Nz) * Y
 
             # transmission_los and/ delta_los computation and point_positions
             point_positions = np.transpose(np.array([X_array, Y_array, Nz_array])) # Z_array = Nz_array, all the z axis is used always
