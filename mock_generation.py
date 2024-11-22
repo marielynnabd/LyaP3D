@@ -266,6 +266,9 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, seed=None, ra_start=0
     z_box: float
     Redshift of box.
     
+    seed: float, default: None
+    Seed for randomly choosing x and y in box. Should be used when generating several mocks using multiprocessing otherwise they will all have same x and y
+
     ra_start: float, default: 0
     Starting point of the ra coordinate used for tiling over DESI footprint.
 
