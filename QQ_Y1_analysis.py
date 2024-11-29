@@ -9,7 +9,7 @@ from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
 
-from .tools import SPEED_LIGHT
+from .tools import SPEED_LIGHT, LAMBDA_LYA
 
 
 def get_QQ_Y1_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
