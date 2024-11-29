@@ -12,9 +12,10 @@ from astropy.cosmology import FlatLambdaCDM
 from scipy.stats import binned_statistic
 from scipy.optimize import curve_fit
 
-from tools import SPEED_LIGHT, LAMBDA_LYA, find_bin_edges, convert_units, fitfunc_std_fftproduct, fitfunc_variance_pk1d
-from eBOSS_dr16_analysis import boss_resolution_correction
-from pairs_computation import compute_pairs
+sys.path.insert(0, os.environ['HOME']+'/Software')
+from LyaP3D.tools import SPEED_LIGHT, LAMBDA_LYA, find_bin_edges, convert_units, fitfunc_std_fftproduct, fitfunc_variance_pk1d
+from LyaP3D.eBOSS_dr16_analysis import boss_resolution_correction
+from LyaP3D.pairs_computation import compute_pairs
 
 
 def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type, units, weight_method='no_weights',
