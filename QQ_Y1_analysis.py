@@ -9,7 +9,8 @@ from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
 
-from .tools import SPEED_LIGHT, LAMBDA_LYA
+sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
+from tools import SPEED_LIGHT, LAMBDA_LYA
 
 
 def get_QQ_Y1_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max,
@@ -244,16 +245,16 @@ def get_Nyx_raw_deltas_singlefile(transmission_file_name, qso_cat, lambda_min, l
     ## Wavelength
     _lambda  = transmission_file[2].read()
 
-    ### Defining wavelength mask to select chunk
+    ## raw transmission of selected qso, not yet truncated per redshift bin
+    raw_transmission_selected_qso = transmission_file[3].read()[select_qso] # Has shape (n_los, len(_lambda))
+
+    ## Defining wavelength mask to select chunk
     mask_wavelength = (_lambda > lambda_min) & (_lambda < lambda_max) # This selects the part of LOS between lambda_min and lambda_max
 
-    ### Wavelength array in (lambda_min, lambda_max)
+    ## Wavelength array in (lambda_min, lambda_max)
     wavelength = _lambda[mask_wavelength]
 
-    ## raw transmission of selected qso within the (lambda_min, lambda_max) range
-    raw_transmission_selected_qso = transmission_file[3].read()[select_qso][mask_wavelength] # Has shape (n_los, len(wavelength)) # To correct because this is the F_LYA and not F/Fmean - 1
-
-    # Computing mean_flux_goal later used to compute raw_delta
+    # Computing mean_flux_goal later used to compute raw_delta already within in (lambda_min, lambda_max)
     redshift = (wavelength / LAMBDA_LYA) - 1
     mean_flux_goal = np.exp(-25e-4 * (1 + redshift)**3.7)
 
@@ -275,7 +276,7 @@ def get_Nyx_raw_deltas_singlefile(transmission_file_name, qso_cat, lambda_min, l
 
         if los_ID in qso_tid: # In case we filtered the qso cat, the qso will also be removed from the raw analysis
             # Reading data
-            los_raw_transmission = raw_transmission_selected_qso[i,:]
+            los_raw_transmission = raw_transmission_selected_qso[i,:][mask_wavelength]
 
             # Filling table
             los_table[i]['ra'] = los_ra * 180 / np.pi  # must convert rad --> dec.
