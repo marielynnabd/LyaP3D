@@ -534,19 +534,19 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
     return mean_power_spectrum
 
 
-def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins, k_scale):
+def wavenumber_rebin_power_spectrum(power_spectrum_table, k_scale, n_kbins=None):
     """ This function rebins the cross power spectrum into parallel wavenumber bins
 
     Arguments:
     ----------
     power_spectrum_table: Table
-    Table of mean power spectrum computed from one or several mocks
+    Table of mean power spectrum
 
     n_kbins: Integer
     Number of k bins we want after rebinning
     
     k_scale: String
-    Scale of wavenumber array to be rebinned. Options: 'linear', 'log'
+    Scale of wavenumber array to be rebinned. Options: 'linear', 'log', 'custom_DR1'. n_kbins not needed for custom_DR1.
 
     Return:
     -------
@@ -557,9 +557,13 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins, k_scale):
     if k_scale == 'log': # Used in mocks case
         k_bin_edges = np.logspace(-2, np.log10(np.max(power_spectrum_table['k_parallel'][0])), 
                                   num=n_kbins+1)
-    else: # Used in data case
+    elif k_scale == 'linear': # Used in data case
         k_bin_edges = np.linspace(np.min(power_spectrum_table['k_parallel'][0]), 
                                   np.max(power_spectrum_table['k_parallel'][0]), num=n_kbins+1)
+    elif k_scale == 'custom_DR1':
+        k_bin_edges = np.arange(0, 3.1, 0.1)
+    else:
+        sys.exit('Must input k_scale: log, linear or custrom_DR1')
 
     k_bin_centers = np.around((k_bin_edges[1:] + k_bin_edges[:-1]) / 2, 5) # same units as k_parallel
 
@@ -580,10 +584,12 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins, k_scale):
 
             select_k = (power_spectrum_table['k_parallel'][j] > k_bin_edges[ik_bin]) & (
                 power_spectrum_table['k_parallel'][j] <= k_bin_edges[ik_bin+1])
-
+            
+            mean_k_parallel_in_bin = np.mean(power_spectrum_table['k_parallel'][j][select_k])
             mean_power_spectrum_rebinned = np.mean(power_spectrum_table['mean_power_spectrum'][j][select_k])
             error_power_spectrum_rebinned = np.mean(power_spectrum_table['error_power_spectrum'][j][select_k]) / np.sqrt(np.sum(select_k))
-            power_spectrum_table['k_parallel_rebinned'][j,:] = k_bin_centers
+            # power_spectrum_table['k_parallel_rebinned'][j,:] = k_bin_centers
+            power_spectrum_table['k_parallel_rebinned'][j,ik_bin] = mean_k_parallel_in_bin
             power_spectrum_table['mean_power_spectrum_rebinned'][j,ik_bin] = mean_power_spectrum_rebinned 
             power_spectrum_table['error_power_spectrum_rebinned'][j,ik_bin] = error_power_spectrum_rebinned
             
@@ -599,6 +605,52 @@ def wavenumber_rebin_power_spectrum(power_spectrum_table, n_kbins, k_scale):
                 pass
 
     return power_spectrum_table
+
+
+def redshift_rebin_power_spectrum(power_spectrum_tables_list):
+    """ This function rebins the cross power spectrum in redshift, it only works for averaging power sectra that have been rebinned with k_scale = 'custom_DR1,
+    Otherwise, it might raise some errors or give inaccurate results.
+    PS: it won't work on power spectra that weren't rebinned anyway, because it reads _rebinned arguments only, and these are added at the level of wavenumber_rebin_power_spectrum function
+
+    Arguments:
+    ----------
+    power_spectrum_tables_list: List of Tables
+    List of the mean power spectrum tables
+
+    Return:
+    -------
+    power_spectrum_table_rebinned: Table
+    New power spectrum table at rebinned redshift value
+    """
+
+    N_ps = len(power_spectrum_tables_list)
+
+    # Since all power spectra have same n_ang_sep_bins and Nk, I'll read first table to define table dimensions only here
+    ang_sep_bin_centers = power_spectrum_tables_list[0]['ang_sep_bin_centers'] # This is unchanged from one ps to another
+    n_ang_sep_bins = len(ang_sep_bin_centers)
+    Nk = len(power_spectrum_tables_list[0]['k_parallel_rebinned'])
+
+    # Initializing power_spectrum_table_rebinned
+    power_spectrum_table_rebinned = Table()
+
+    # Defining columns to be averaged
+    array_columns = ['mean_ang_separation', 'k_parallel_rebinned', 'mean_power_spectrum_rebinned',
+                     'resolution_correction_rebinned', 'corrected_power_spectrum_rebinned']
+    error_columns = ['error_power_spectrum_rebinned', 'error_corrected_power_spectrum_rebinned']
+    # TODO later since covmat is not rebinned in k_parallel yet
+    # if with_covmat:
+    #     array_columns += ['covmat_power_spectrum_rebinned', 'covmat_corrected_power_spectrum_rebinned']
+
+    # Stacking
+    for col in array_columns + error_columns:
+        stacked = np.stack([table[col] for table in power_spectrum_tables_list], axis=0)
+        if col in error_columns:
+            averaged = np.sqrt(np.sum(stacked**2, axis=0)) / N_ps
+        else:
+            averaged = np.mean(stacked, axis=0)
+        power_spectrum_table_rebinned[col] = averaged
+
+    return power_spectrum_table_rebinned
 
 
 def run_compute_mean_power_spectrum(mocks_dir, ncpu, ang_sep_max, n_kbins, k_scale, data_type, units, weight_method='no_weights',
