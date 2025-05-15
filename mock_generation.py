@@ -334,7 +334,8 @@ def draw_los(box, box_type, los_number, pixel_size, z_box, seed=None, ra_start=0
 
     # Preparing for tau rescaling
     if tau_rescaling_with_redshift and box_type=='transmissions':
-        flux_goal_los = np.exp(-25e-4 * (1 + redshift_array)**3.7)
+        # flux_goal_los = np.exp(-25e-4 * (1 + redshift_array)**3.7)
+        flux_goal_los = np.exp(-45e-4 * (1 + redshift_array)**3.7) # To test amplitude of power spectrum
         rescaling_factor_los = np.interp(flux_goal_los, rescaling_factor_list[:,0], rescaling_factor_list[:,1])
     elif tau_rescaling_with_redshift and box_type=='deltas':
         print('Warning, input box type is not transmissions, therefore no rescaling could be applied')
