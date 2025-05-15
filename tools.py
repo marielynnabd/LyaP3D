@@ -180,3 +180,6 @@ def fitfunc_variance_pk1d(snr, amp, zero_point):
     """
     return (amp / (snr - 1)**2) + zero_point
 
+
+def read_fits_table(tablefilename):
+    return Table.read(tablefilename)
