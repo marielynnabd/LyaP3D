@@ -8,6 +8,7 @@ import fitsio
 from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
+from desispec.interpolation import resample_flux
 
 sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
 from tools import SPEED_LIGHT, LAMBDA_LYA
@@ -59,6 +60,7 @@ def get_QQ_Y1_deltas_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max
     ## Meta data
     _meta_data = delta_file[2].read()
     n_los = len(_meta_data['TARGETID'])
+
     print("QQ delta file ", delta_file_name, ":", n_los, "lines-of-sight")
     ## Delta
     _delta = delta_file[3].read() # Has shape (n_los, len(_lambda))
