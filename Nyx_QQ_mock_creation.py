@@ -9,6 +9,7 @@ import sys, os, glob
 import multiprocessing
 from multiprocessing import Pool
 import yaml
+from desispec.interpolation import resample_flux
 
 sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
 from tools import LAMBDA_LYA
@@ -273,7 +274,7 @@ def adapt_Nyxmock_to_QQ_input(pixels_dict_file_name, outdir, healpix_nside, heal
         output_fits_image.close()
 
 
-def create_mock_chunk(full_mock_table, z_min, z_max):
+def create_mock_chunk_old(full_mock_table, z_min, z_max):
     """ This function creates a chunk of the full mock within one redshift bin """
 
     # Definig mask
@@ -302,3 +303,32 @@ def create_mock_chunk(full_mock_table, z_min, z_max):
 
     return new_mock
 
+
+def adapt_LOS_to_wavelength_ref_for_rawanalysis(los_in_mock_table, wavelength_ref):
+    """ This function rescales the LOS wavelength grid and delta to match those of picca deltas, 
+    it reads a table with one row containing one LOS info and returns a one column table of rescaled wavelength and delta
+    We use the resample_flux function from desispec and works for resampling any qty not only flux (tested)
+    PS: Careful integration of bins, not just a simple interpolation
+    """    
+    
+    # Reading LOS mock
+    lambda_mock = los_in_mock_table['wavelength']
+    delta_mock = los_in_mock_table['delta_los']
+    ra = los_in_mock_table['new_ra']
+    dec = los_in_mock_table['new_dec']
+    
+    # Rescaling delta
+    delta_rescaled = resample_flux(wavelength_ref, lambda_mock, delta_mock)
+    
+    # Creating new table of one LOS
+    output_LOS_table = Table()
+    # output_LOS_table['delta_los'] = np.zeros((1, wavelength_ref))
+    # output_LOS_table['wavelength'] = np.zeros((1, wavelength_ref))
+    output_LOS_table['delta_los'] = [delta_rescaled]
+    output_LOS_table['wavelength'] = [wavelength_ref]
+    output_LOS_table['new_ra'] = ra
+    output_LOS_table['new_dec'] = dec
+    
+    return output_LOS_table
+    
+    
