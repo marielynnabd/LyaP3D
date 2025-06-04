@@ -259,7 +259,13 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
                 weights_p_cross_array = weights_los1 * weights_los2
                 # Computing weighted average
                 mean_p_cross[i] = np.average(p_cross_array.real, weights=weights_p_cross_array)
-                error_p_cross[i] = np.sqrt(1.0 / np.sum(weights_p_cross_array))
+                # error_p_cross[i] = np.sqrt(1.0 / np.sum(weights_p_cross_array))  # wrong if weights are not optimal
+                # error bar => (B.8) from arxiv:2505.09493
+                w2 = weights_p_cross_array**2
+                sw, sw2 = np.sum(weights_p_cross_array), np.sum(w2)
+                avg2 = np.average((p_cross_array.real)**2, weights=w2)
+                variance_pcross = (avg2 - (mean_p_cross[i])**2) / (sw**2/sw2 - 1)
+                error_p_cross[i] = np.sqrt(variance_pcross)
             elif weight_method == 'forest_snr':
                 weights_p_cross_array = snr_los1 * snr_los2
                 # Computing weighted average
