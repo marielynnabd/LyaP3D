@@ -303,11 +303,12 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
                 # Method 2) Eqn (B.7) from arxiv:2505.09493, same notation
                 covmat = np.zeros((Nk, Nk))
                 for i in range(Nk):
+                    v, X = weights_pairs[:,i], np.array(p_cross[:,i].real)
+                    sv = np.sum(v)
                     for j in range(Nk):
-                        v, w = weights_pairs[:,i], weights_pairs[:,j]
+                        w, Y = weights_pairs[:,j], np.array(p_cross[:,j].real)
                         vw = v*w
-                        X, Y = np.array(p_cross[:,i].real), np.array(p_cross[:,j].real)
-                        sv, sw, s2 = np.sum(v), np.sum(w), np.sum(vw)
+                        sw, s2 = np.sum(w), np.sum(vw)
                         avg2 = np.average(X*Y, weights=vw)
                         covmat[i,j] = (avg2 - mean_p_cross[i]*mean_p_cross[j]) / (sv*sw/s2 - 1)
             else:
