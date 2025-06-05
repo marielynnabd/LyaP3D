@@ -228,6 +228,11 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
         mean_resolution_correction_p_cross = np.zeros(Nk)
         error_p_cross = np.zeros(Nk)
 
+        if weight_method == 'fit_forest_snr':
+            weights_pairs = np.ones((len(index_los1), len(k_parallel)))
+        else:
+            weights_pairs = None
+
         for i in range(Nk):
             p_cross_array = np.array(p_cross[:,i]) # This contains the values of p_cross we want to average at one k_parallel
             # Applying weighting scheme
@@ -260,6 +265,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
                 weights_los1 = 1 / standard_dev_los1_estimated
                 weights_los2 = 1 / standard_dev_los2_estimated
                 weights_p_cross_array = weights_los1 * weights_los2
+                weights_pairs[:,i] = weights_p_cross_array
                 # Computing weighted average
                 mean_p_cross[i] = np.average(p_cross_array.real, weights=weights_p_cross_array)
                 # error_p_cross[i] = np.sqrt(1.0 / np.sum(weights_p_cross_array))  # wrong if weights are not optimal
@@ -290,7 +296,22 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
         p_cross_table['error_corrected_power_spectrum'][i_ang_sep, :] = error_p_cross / mean_resolution_correction_p_cross
 
         if with_covmat:  #- covariance matrix:
-            covmat = np.cov(p_cross.real, rowvar=False)
+            if weight_method == 'fit_forest_snr':
+                # Method 1) compute average weights over k in order to use np.cov
+                average_weights = np.mean(weights_pairs, axis=1)
+                covmat = np.cov(p_cross.real, rowvar=False, ddof=0, aweights=average_weights)
+                # Method 2) Eqn (B.7) from arxiv:2505.09493, same notation
+                covmat = np.zeros((Nk, Nk))
+                for i in range(Nk):
+                    for j in range(Nk):
+                        v, w = weights_pairs[:,i], weights_pairs[:,j]
+                        vw = v*w
+                        X, Y = np.array(p_cross[:,i].real), np.array(p_cross[:,j].real)
+                        sv, sw, s2 = np.sum(v), np.sum(w), np.sum(vw)
+                        avg2 = np.average(X*Y, weights=vw)
+                        covmat[i,j] = (avg2 - mean_p_cross[i]*mean_p_cross[j]) / (sv*sw/s2 - 1)
+            else:
+                covmat = np.cov(p_cross.real, rowvar=False)
             p_cross_table['covmat_power_spectrum'][i_ang_sep, :, :] = covmat
             p_cross_table['covmat_corrected_power_spectrum'][i_ang_sep, :, :] = covmat / np.outer(
                 mean_resolution_correction_p_cross, mean_resolution_correction_p_cross)  # cov_ij / Wi*Wj
