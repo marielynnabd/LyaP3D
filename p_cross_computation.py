@@ -16,11 +16,12 @@ sys.path.insert(0, os.environ['HOME']+'/Software')
 from LyaP3D.tools import SPEED_LIGHT, LAMBDA_LYA, find_bin_edges, convert_units, fitfunc_std_fftproduct, fitfunc_variance_pk1d
 from LyaP3D.eBOSS_dr16_analysis import boss_resolution_correction
 from LyaP3D.pairs_computation import compute_pairs
+from LyaP3D.DESI_Y1_analysis import DESI_resolution_correction
 
 
 def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type, units, weight_method='no_weights',
                          min_snr_p_cross=None, max_resolution_p_cross=None,
-                         resolution_correction=False, reshuffling=False, with_covmat=True):
+                         resolution_correction=False, p1d_file_ reshuffling=False, with_covmat=True):
     """ This function computes mean power spectrum for pairs with angular separations > 0 (called cross power spectrum):
           - Takes mock and corresponding los_pairs_table
           _ Computes cross power spectrum for each pair
@@ -215,8 +216,10 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
                 resgrid, kpargrid = np.meshgrid(resolution_los2, k_parallel, indexing='ij')
                 resolution_correction_los2 = boss_resolution_correction(resgrid, kpargrid, delta_v)
                 resolution_correction_p_cross = resolution_correction_los1 * resolution_correction_los2
-            elif data_type == 'DESI': # Just for now and must be modified later == no correction on DESI
-                resolution_correction_p_cross = np.ones((len(index_los1), len(k_parallel)))
+            elif data_type == 'DESI': # Interpolated correction from that of P1D, code to be improved
+                resolution_correction_p_cross = DESI_resolution_correction(z, k_parallel)
+                print(np.shape(resolution_correction_p_cross))
+                print(resolution_correction_p_cross)
         else:
             resolution_correction_p_cross = np.ones((len(index_los1), len(k_parallel)))
 
@@ -299,6 +302,7 @@ def compute_mean_p_auto(all_los_table, data_type, units, weight_method='no_weigh
           - Takes all_los_table
           - Computes auto power spectrum for each LOS 
           - Averages over all of them to get one p_auto(k_parallel) at ang_sep_bin = 0
+          PS: This function has to be updated: Reso Corr DESI missing, error bars... missing all modifs added to compute_mean_p_cross on 4th on June 2025!
 
     Arguments:
     ----------
