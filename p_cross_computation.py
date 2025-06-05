@@ -21,7 +21,7 @@ from LyaP3D.DESI_Y1_analysis import DESI_resolution_correction
 
 def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data_type, units, weight_method='no_weights',
                          min_snr_p_cross=None, max_resolution_p_cross=None,
-                         resolution_correction=False, p1d_file_ reshuffling=False, with_covmat=True):
+                         resolution_correction=False, reshuffling=False, with_covmat=True):
     """ This function computes mean power spectrum for pairs with angular separations > 0 (called cross power spectrum):
           - Takes mock and corresponding los_pairs_table
           _ Computes cross power spectrum for each pair
