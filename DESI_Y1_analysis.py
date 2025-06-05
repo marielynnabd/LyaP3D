@@ -327,7 +327,7 @@ def patch_deltas(lambda_array, delta_array, delta_lambda):
 
 def DESI_resolution_correction(z_measurement, k_parallel):
     # Using the final P1D, but without BAL AI cuts
-    P1D_Y1_file = '/global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/data/p1d_out/p1d_lya_noisepipeline_linesDESIEDR_catiron_highz_20240305_nobal_BI_dlairon_highz_CNN_GP_naimcuts_balNone/pk1d_SNRcut1/mean_Pk1d_fit_snr_medians.fits.gz'
+    P1D_Y1_file = fits.open('/global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/data/p1d_out/p1d_lya_noisepipeline_linesDESIEDR_catiron_highz_20240305_nobal_BI_dlairon_highz_CNN_GP_naimcuts_balNone/pk1d_SNRcut1/mean_Pk1d_fit_snr_medians.fits.gz')
     P1D_Y1 = P1D_Y1_file[1].data
     zbins = np.unique(P1D_Y1['zbin'])[:11]
     n_z = len(zbins)
