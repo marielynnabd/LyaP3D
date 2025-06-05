@@ -277,7 +277,10 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
             else:
                 mean_p_cross[i] = np.mean(p_cross_array.real)
                 error_p_cross[i] = np.std(p_cross_array.real) / np.sqrt(N_pairs - 1)
-            mean_resolution_correction_p_cross[i] = np.mean(resolution_correction_p_cross[:,i])
+            try:    
+                mean_resolution_correction_p_cross[i] = np.mean(resolution_correction_p_cross[:,i])
+            except: # Because in the case of DESI it's the same correction for all LOS
+                mean_resolution_correction_p_cross[i] = resolution_correction_p_cross[i]
 
         p_cross_table['k_parallel'][i_ang_sep, :] = k_parallel
         p_cross_table['mean_power_spectrum'][i_ang_sep, :] = mean_p_cross  
