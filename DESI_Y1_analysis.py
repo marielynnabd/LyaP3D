@@ -8,6 +8,7 @@ import fitsio
 from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
+from scipy.interpolate import LinearNDInterpolator
 
 # from .tools import SPEED_LIGHT
 sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
@@ -322,4 +323,51 @@ def patch_deltas(lambda_array, delta_array, delta_lambda):
     lambda_array_new += lambda_array[0]
 
     return lambda_array_new, delta_array_new
+
+
+def DESI_resolution_correction(z_measurement, k_parallel):
+    # Using the final P1D, but without BAL AI cuts
+    P1D_Y1_file = '/global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/data/p1d_out/p1d_lya_noisepipeline_linesDESIEDR_catiron_highz_20240305_nobal_BI_dlairon_highz_CNN_GP_naimcuts_balNone/pk1d_SNRcut1/mean_Pk1d_fit_snr_medians.fits.gz'
+    P1D_Y1 = P1D_Y1_file[1].data
+    zbins = np.unique(P1D_Y1['zbin'])[:11]
+    n_z = len(zbins)
+    n_k = len(P1D_Y1['meank'][P1D_Y1['zbin'] == zbins[0]])
+    
+    # Creating ResoCorr_table from P1D file for z and k of P1D
+    ResoCorr_table = Table()
+    ResoCorr_table['Z'] = np.zeros(n_z)
+    ResoCorr_table['K'] = np.zeros((n_z, n_k))
+    ResoCorr_table['Reso_corr'] = np.zeros((n_z, n_k))
+    for iz, z in enumerate(zbins): # z bin
+        select_z = (P1D_Y1['zbin'] == z)
+        K = P1D_Y1['meank'][select_z]
+        Reso_corr = P1D_Y1['meancor_reso'][select_z]
+    
+        # Filling table
+        ResoCorr_table['Z'][iz] = z
+        ResoCorr_table['K'][iz] = K
+        ResoCorr_table['Reso_corr'][iz] = Reso_corr
+
+    # Interpolating the resolution correction
+    ## Build a big list of (z,k) points and corresponding correction values:
+    points_list = []
+    values_list = []
+    for z, k_arr, corr_arr in zip(ResoCorr_table['Z'], ResoCorr_table['K'], ResoCorr_table['Reso_corr']):
+        # stack z with each k in this row
+        pts = np.column_stack((np.full_like(k_arr, z), k_arr))  # shape (n_k_row, 2)
+        points_list.append(pts)
+        values_list.append(corr_arr)
+    points = np.vstack(points_list)       # shape (total_points, 2)
+    values = np.concatenate(values_list)  # shape (total_points,)
+
+    ## Create a reusable 2D scattered-data interpolator:
+    ResoCorr_interpolator = LinearNDInterpolator(points, values, fill_value=np.nan)
+
+    ## Interpolation
+    z_arr = np.full_like(k_parallel, z_measurement)
+    z_min, z_max = ResoCorr_table['Z'].min(), ResoCorr_table['Z'].max()
+    z_arr = np.clip(z_arr, z_min, z_max)  # if z_measurement outside the z domain in which I got my interpolator, it will take the smallest z, will be happening only for z=2.15
+    reso_corr_output = ResoCorr_interpolator(z_arr, k_parallel)
+
+    return reso_corr_output
 
