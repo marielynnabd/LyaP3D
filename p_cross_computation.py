@@ -11,6 +11,7 @@ from multiprocessing import Pool
 from astropy.cosmology import FlatLambdaCDM
 from scipy.stats import binned_statistic
 from scipy.optimize import curve_fit
+from scipy.signal import savgol_filter
 
 sys.path.insert(0, os.environ['HOME']+'/Software')
 from LyaP3D.tools import SPEED_LIGHT, LAMBDA_LYA, find_bin_edges, convert_units, fitfunc_std_fftproduct, fitfunc_variance_pk1d
@@ -285,10 +286,14 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
                 mean_resolution_correction_p_cross[i] = np.mean(resolution_correction_p_cross[:,i])
             except: # Because in the case of DESI it's the same correction for all LOS
                 mean_resolution_correction_p_cross[i] = resolution_correction_p_cross[i]
-        ## TODO smooth error_p_cross <---
+
+        # Smoothing errors:
+        smoothed_error_p_cross = savgol_filter(error_p_cross, window_length=15, polyorder=1)
+
+        # Filling table
         p_cross_table['k_parallel'][i_ang_sep, :] = k_parallel
         p_cross_table['mean_power_spectrum'][i_ang_sep, :] = mean_p_cross  
-        p_cross_table['error_power_spectrum'][i_ang_sep, :] = error_p_cross
+        p_cross_table['error_power_spectrum'][i_ang_sep, :] = smoothed_error_p_cross
         p_cross_table['resolution_correction'][i_ang_sep, :] = mean_resolution_correction_p_cross
         p_cross_table['corrected_power_spectrum'][i_ang_sep, :] = mean_p_cross / mean_resolution_correction_p_cross
         p_cross_table['error_corrected_power_spectrum'][i_ang_sep, :] = error_p_cross / mean_resolution_correction_p_cross
