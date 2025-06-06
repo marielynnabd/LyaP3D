@@ -12,10 +12,7 @@ from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
 
 # from .tools import SPEED_LIGHT
 sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
-from tools import SPEED_LIGHT, LAMBDA_LYA
-
-sys.path.insert(0, os.environ['HOME']+'/Software/picca/py/picca/pk1d')
-from utils import skyline_mask_matrices_desi
+from tools import SPEED_LIGHT, LAMBDA_LYA, DEFAULT_MINWAVE_SKYMASK, DEFAULT_MAXWAVE_SKYMASK, DEFAULT_DWAVE_SKYMASK
 
 
 def get_desi_los_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, 
@@ -396,19 +393,75 @@ def subtract_SB_power_spectrum(pcross_table, pcross_sb_table):
 
     ## Filling the table
     for i_ang_sep, ang_sep in enumerate(ang_sep_bin_centers):
-        pcross_table['SB_corrected_power_spectrum'][i_ang_sep] = pcross_table['corrected_power_sepctrum'][i_ang_sep] - pcross_table['power_spectrum_SB'][i_ang_sep]
-        var_SB_corrected_power_spectrum = pcross_table['error_corrected_power_sepctrum'][i_ang_sep]**2 + pcross_table['error_power_spectrum_SB'][i_ang_sep]**2
+        pcross_table['SB_corrected_power_spectrum'][i_ang_sep] = pcross_table['corrected_power_spectrum'][i_ang_sep] - pcross_table['power_spectrum_SB'][i_ang_sep]
+        var_SB_corrected_power_spectrum = pcross_table['error_corrected_power_spectrum'][i_ang_sep]**2 + pcross_table['error_power_spectrum_SB'][i_ang_sep]**2
         pcross_table['error_SB_corrected_power_spectrum'][i_ang_sep] = np.sqrt(var_SB_corrected_power_spectrum)
         pcross_table['covmat_SB_corrected_power_spectrum'][i_ang_sep,:,:] = np.diag(var_SB_corrected_power_spectrum)
 
     return pcross_table
 
 
-def DESI_skyline_correction(pcross_table, z_min, z_max, skyline_mask_file):
+## TODO: MODIFY skyline_mask_matrices_desi, this is copied from picca.pk1d
+def skyline_mask_matrices_desi(lmin, lmax, skyline_mask_file,
+                               minwave=DEFAULT_DWAVE_SKYMASK,
+                               maxwave=DEFAULT_MAXWAVE_SKYMASK,
+                               dwave=DEFAULT_DWAVE_SKYMASK):
+    """ Compute matrices to correct for the masking effect on FFTs,
+    when chunks are defined with the `--parts-in-redshift` option in picca_Pk1D.
+    Only implemented for DESI data, ie delta lambda = 0.8 and no rebinning in the deltas.
+
+    Arguments
+    ---------
+    lmin, lmax of my bin
+
+    skyline_mask_file: str
+    Name of file containing the list of skyline masks
+
+    minwave, maxwave, dwave: float
+    Parameter defining the wavelength grid used for the skymask. Should be consistent with
+    arguments lambda min, lambda max, delta lambda used in picca_delta_extraction.py.
+
+    Return
+    ------
+    inv_matrix of the correction to be directly multiplied by the Pcross
+    """
+    skyline_list = np.genfromtxt(skyline_mask_file,
+                                 names=('type', 'wave_min', 'wave_max', 'frame'))
+    ref_wavegrid = np.arange(minwave, maxwave, dwave)
+    wave = ref_wavegrid[ (ref_wavegrid > lmin) & (ref_wavegrid < lmax) ]
+    npts = len(wave)
+    print(npts)
+    skymask = np.ones(npts)
+    selection = ( (skyline_list['wave_min']<=lmax) & (skyline_list['wave_min']>=lmin)
+                ) | ( (skyline_list['wave_max']<=lmax) & (skyline_list['wave_max']>=lmin) ) # check if it should be modified
+
+    for skyline in skyline_list[selection]:
+        skymask[(wave>skyline['wave_min']) & (wave<skyline['wave_max'])] = 0
+    skymask_tilde = np.fft.fft(skymask)/npts
+    mask_matrix = np.zeros((npts, npts))
+    for j in range(npts):
+        for l in range(npts):
+            index_mask = j-l if j>=l else j-l+npts
+            mask_matrix[j, l] = (
+                skymask_tilde[index_mask].real ** 2
+                + skymask_tilde[index_mask].imag ** 2
+            )
+    try:
+        inv_matrix = np.linalg.inv(mask_matrix)
+    except np.linalg.LinAlgError:
+        userprint(
+            """Warning: cannot invert sky mask matrix """
+        )
+        userprint("No correction will be applied for this bin")
+        inv_matrix = np.eye(npts)
+
+    return inv_matrix
+
+
+def DESI_skyline_correction(pcross_table, lmin, lmax, skyline_mask_file):
 
     # Computing the skyline mask correction matrix
-    z_parts = np.array([z_min, z_max])
-    meanz, skyline_mask_correction_matrix = skyline_mask_matrices_desi(z_parts, skyline_mask_file)[0]
+    skyline_mask_correction_matrix = skyline_mask_matrices_desi(lmin, lmax, skyline_mask_file)
 
     # Adding columns to power_spectrum_table
 
