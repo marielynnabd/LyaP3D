@@ -218,8 +218,6 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
                 resolution_correction_p_cross = resolution_correction_los1 * resolution_correction_los2
             elif data_type == 'DESI': # Interpolated correction from that of P1D, code to be improved
                 resolution_correction_p_cross = DESI_resolution_correction(z, k_parallel)
-                print(np.shape(resolution_correction_p_cross))
-                print(resolution_correction_p_cross)
         else:
             resolution_correction_p_cross = np.ones((len(index_los1), len(k_parallel)))
 
@@ -287,7 +285,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
                 mean_resolution_correction_p_cross[i] = np.mean(resolution_correction_p_cross[:,i])
             except: # Because in the case of DESI it's the same correction for all LOS
                 mean_resolution_correction_p_cross[i] = resolution_correction_p_cross[i]
-
+        ## TODO smooth error_p_cross <---
         p_cross_table['k_parallel'][i_ang_sep, :] = k_parallel
         p_cross_table['mean_power_spectrum'][i_ang_sep, :] = mean_p_cross  
         p_cross_table['error_power_spectrum'][i_ang_sep, :] = error_p_cross
@@ -297,10 +295,7 @@ def compute_mean_p_cross(all_los_table, los_pairs_table, ang_sep_bin_edges, data
 
         if with_covmat:  #- covariance matrix:
             if weight_method == 'fit_forest_snr':
-                # Method 1) compute average weights over k in order to use np.cov
-                average_weights = np.mean(weights_pairs, axis=1)
-                covmat = np.cov(p_cross.real, rowvar=False, ddof=0, aweights=average_weights)
-                # Method 2) Eqn (B.7) from arxiv:2505.09493, same notation
+                # Eqn (B.7) from arxiv:2505.09493, same notation
                 covmat = np.zeros((Nk, Nk))
                 for i in range(Nk):
                     v, X = weights_pairs[:,i], np.array(p_cross[:,i].real)
