@@ -8,6 +8,11 @@ from astropy.cosmology import FlatLambdaCDM
 
 SPEED_LIGHT = astropy.constants.c.to('km/s').value  # km/s
 LAMBDA_LYA = 1215.67  # Angstrom
+# Wavelength grid to estimate skyline masks:
+# default values from eg. desispec/scripts/proc.py
+DEFAULT_MINWAVE_SKYMASK = 3600.0
+DEFAULT_MAXWAVE_SKYMASK = 9824.0
+DEFAULT_DWAVE_SKYMASK = 0.8
 
 
 def convert_units(data_to_convert, input_units, output_units, z, inverse_units=False):
