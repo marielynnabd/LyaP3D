@@ -8,11 +8,14 @@ import fitsio
 from astropy.io import fits
 from astropy.table import Table, vstack
 import scipy
-from scipy.interpolate import LinearNDInterpolator
+from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
 
 # from .tools import SPEED_LIGHT
 sys.path.insert(0, os.environ['HOME']+'/Software/LyaP3D')
-from tools import SPEED_LIGHT
+from tools import SPEED_LIGHT, LAMBDA_LYA
+
+sys.path.insert(0, os.environ['HOME']+'/Software/picca/py/picca/pk1d')
+from utils import skyline_mask_matrices_desi
 
 
 def get_desi_los_singlefile(delta_file_name, qso_cat, lambda_min, lambda_max, z_center, 
@@ -361,7 +364,8 @@ def DESI_resolution_correction(z_measurement, k_parallel):
     values = np.concatenate(values_list)  # shape (total_points,)
 
     ## Create a reusable 2D scattered-data interpolator:
-    ResoCorr_interpolator = LinearNDInterpolator(points, values, fill_value=np.nan)
+    # ResoCorr_interpolator = LinearNDInterpolator(points, values, fill_value=np.nan)
+    ResoCorr_interpolator = NearestNDInterpolator(points, values) # avoids nan when extrapolated
 
     ## Interpolation
     z_arr = np.full_like(k_parallel, z_measurement)
@@ -371,3 +375,58 @@ def DESI_resolution_correction(z_measurement, k_parallel):
 
     return reso_corr_output
 
+
+def subtract_SB_power_spectrum(pcross_table, pcross_sb_table):
+    # Adding pcross_sb and error_pcross_sb columns to pcross_table
+    pcross_table['power_spectrum_SB'] = pcross_sb_table['corrected_power_spectrum']
+    pcross_table['error_power_spectrum_SB'] = pcross_sb_table['error_corrected_power_spectrum']
+
+    # Adding the SB_corrected_power_spectrum, error_SB_corrected_power_spectrum, covmat_SB_corrected_power_spectrum columns
+
+    ## Lengths definitions
+    ang_sep_bin_centers = pcross_table['ang_sep_bin_centers']
+    n_ang_sep_bins = len(ang_sep_bin_centers)
+    k_parallel = pcross_table['k_parallel'][0]
+    Nk = len(k_parallel)
+
+    ## Columns initialization
+    pcross_table['SB_corrected_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
+    pcross_table['error_SB_corrected_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
+    pcross_table['covmat_SB_corrected_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk, Nk))
+
+    ## Filling the table
+    for i_ang_sep, ang_sep in enumerate(ang_sep_bin_centers):
+        pcross_table['SB_corrected_power_spectrum'][i_ang_sep] = pcross_table['corrected_power_sepctrum'][i_ang_sep] - pcross_table['power_spectrum_SB'][i_ang_sep]
+        var_SB_corrected_power_spectrum = pcross_table['error_corrected_power_sepctrum'][i_ang_sep]**2 + pcross_table['error_power_spectrum_SB'][i_ang_sep]**2
+        pcross_table['error_SB_corrected_power_spectrum'][i_ang_sep] = np.sqrt(var_SB_corrected_power_spectrum)
+        pcross_table['covmat_SB_corrected_power_spectrum'][i_ang_sep,:,:] = np.diag(var_SB_corrected_power_spectrum)
+
+    return pcross_table
+
+
+def DESI_skyline_correction(pcross_table, z_min, z_max, skyline_mask_file):
+
+    # Computing the skyline mask correction matrix
+    z_parts = np.array([z_min, z_max])
+    meanz, skyline_mask_correction_matrix = skyline_mask_matrices_desi(z_parts, skyline_mask_file)[0]
+
+    # Adding columns to power_spectrum_table
+
+    ## Lengths definitions
+    ang_sep_bin_centers = pcross_table['ang_sep_bin_centers']
+    n_ang_sep_bins = len(ang_sep_bin_centers)
+    k_parallel = pcross_table['k_parallel'][0]
+    Nk = len(k_parallel)
+
+    ## Columns initialization
+    pcross_table['Full_corrected_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
+    pcross_table['error_Full_corrected_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
+    pcross_table['covmat_Full_corrected_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk, Nk))
+
+    ## Filling the table
+    for i_ang_sep, ang_sep in enumerate(ang_sep_bin_centers):
+        pcross_table['Full_corrected_power_spectrum'][i_ang_sep] = skyline_mask_correction_matrix @ pcross_table['SB_corrected_power_spectrum'][i_ang_sep]
+        pcross_table['covmat_Full_corrected_power_spectrum'][i_ang_sep,:,:] = skyline_mask_correction_matrix @ pcross_table['covmat_SB_corrected_power_spectrum'][i_ang_sep,:,:] @ skyline_mask_correction_matrix.T
+        pcross_table['error_Full_corrected_power_spectrum'][i_ang_sep] = np.sqrt(np.diag(pcross_table['covmat_Full_corrected_power_spectrum'][i_ang_sep,:,:]))
+
+    return pcross_table
