@@ -401,7 +401,7 @@ def subtract_SB_power_spectrum(pcross_table, pcross_sb_table):
     return pcross_table
 
 
-## TODO: MODIFY skyline_mask_matrices_desi, this is copied from picca.pk1d
+## Copied from picca.pk1d but adapted to my Px measurement case
 def skyline_mask_matrices_desi(lmin, lmax, skyline_mask_file,
                                minwave=DEFAULT_DWAVE_SKYMASK,
                                maxwave=DEFAULT_MAXWAVE_SKYMASK,
