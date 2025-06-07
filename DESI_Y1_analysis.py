@@ -434,6 +434,7 @@ def skyline_mask_matrices_desi(lmin, lmax, skyline_mask_file,
     skymask = np.ones(npts)
     selection = ( (skyline_list['wave_min']<=lmax) & (skyline_list['wave_min']>=lmin)
                 ) | ( (skyline_list['wave_max']<=lmax) & (skyline_list['wave_max']>=lmin) ) # check if it should be modified
+    print('List of skylines', skyline_list[selection])
 
     for skyline in skyline_list[selection]:
         skymask[(wave>skyline['wave_min']) & (wave<skyline['wave_max'])] = 0
@@ -470,6 +471,9 @@ def DESI_skyline_correction(pcross_table, lmin, lmax, skyline_mask_file):
     n_ang_sep_bins = len(ang_sep_bin_centers)
     k_parallel = pcross_table['k_parallel'][0]
     Nk = len(k_parallel)
+
+    ## Cutting the matrix
+    skyline_mask_correction_matrix = np.copy(skyline_mask_correction_matrix[0:Nk, 0:Nk])
 
     ## Columns initialization
     pcross_table['Full_corrected_power_spectrum'] = np.zeros((n_ang_sep_bins, Nk))
