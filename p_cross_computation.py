@@ -514,11 +514,17 @@ def compute_mean_p_auto(all_los_table, data_type, units, weight_method='no_weigh
         else:
             mean_p_auto[i] = np.mean(p_auto_array)
             error_p_auto[i] = np.std(p_auto_array) / np.sqrt(Nlos - 1)
-        mean_resolution_correction_p_auto[i] = np.mean(resolution_correction_p_auto[:, i])
+        try:    
+            mean_resolution_correction_p_auto[i] = np.mean(resolution_correction_p_auto[:, i])
+        except: # Because in the case of DESI it's the same correction for all LOS
+            mean_resolution_correction_p_auto[i] = resolution_correction_p_auto[i]
+
+        # Smoothing errors:
+        smoothed_error_p_auto = savgol_filter(error_p_auto, window_length=15, polyorder=1)
 
     p_auto_table['k_parallel'][0, :] = k_parallel
     p_auto_table['mean_power_spectrum'][0, :] = mean_p_auto  
-    p_auto_table['error_power_spectrum'][0, :] = error_p_auto
+    p_auto_table['error_power_spectrum'][0, :] = smoothed_error_p_auto
     p_auto_table['resolution_correction'][0, :] = mean_resolution_correction_p_auto
     p_auto_table['corrected_power_spectrum'][0, :] = (mean_p_auto - p_noise) / mean_resolution_correction_p_auto
     p_auto_table['error_corrected_power_spectrum'][0, :] = error_p_auto / mean_resolution_correction_p_auto
