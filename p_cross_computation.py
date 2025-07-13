@@ -467,7 +467,8 @@ def compute_mean_p_auto(all_los_table, data_type, units, weight_method='no_weigh
             resolution_correction_los = boss_resolution_correction(resgrid, kpargrid, delta_v)
             resolution_correction_p_auto = resolution_correction_los**2
         elif data_type == 'DESI': # Just for now and must be modified later == no correction on DESI
-            resolution_correction_p_auto = np.ones((Nlos, len(k_parallel)))
+            # resolution_correction_p_auto = np.ones((Nlos, len(k_parallel)))
+            resolution_correction_p_auto = DESI_resolution_correction(z, k_parallel)
     else:
         resolution_correction_p_auto = np.ones((Nlos, len(k_parallel)))
 
@@ -497,7 +498,14 @@ def compute_mean_p_auto(all_los_table, data_type, units, weight_method='no_weigh
             weights_p_auto_array = 1 / variance_los_estimated
             # Computing weighted average
             mean_p_auto[i] = np.average(p_auto_array, weights=weights_p_auto_array)
-            error_p_auto[i] = np.sqrt(1.0 / np.sum(weights_p_auto_array))
+            # error_p_auto[i] = np.sqrt(1.0 / np.sum(weights_p_auto_array))
+            # Updated error bar using the same formula as in Eq. (B.8) of arXiv:2505.09493
+            w2 = weights_p_auto_array**2
+            sw = np.sum(weights_p_auto_array)
+            sw2 = np.sum(w2)
+            avg2 = np.average(p_auto_array**2, weights=w2)
+            variance_pauto = (avg2 - (mean_p_auto[i])**2) / (sw**2/sw2 - 1)
+            error_p_auto[i] = np.sqrt(variance_pauto)
         elif weight_method == 'forest_snr':
             weights_p_auto_array = snr_los**2
             # Computing weighted average
@@ -565,7 +573,7 @@ def compute_mean_power_spectrum(all_los_table, los_pairs_table, ang_sep_bin_edge
                                        units=units,
                                        weight_method=weight_method)
     mean_power_spectrum = vstack([p_auto_table, p_cross_table])
-    
+
     return mean_power_spectrum
 
 
